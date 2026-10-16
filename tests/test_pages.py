@@ -50,3 +50,20 @@ def test_one_user_menu_with_password_theme_and_logout(admin):
 def test_big_forms_are_full_screen_on_phones(admin):
     assert "modal-fullscreen-sm-down" in page(admin, "/items")
     assert "modal-fullscreen-sm-down" in page(admin, "/users")
+
+
+def test_items_search_stays_and_filters_are_in_an_expandable_panel(admin):
+    html = page(admin, "/items")
+    assert 'id="search"' in html and 'data-bs-target="#filter-panel"' in html
+    panel = html.split('id="filter-panel"')[1].split("</main>")[0]
+    assert 'id="low-only"' in panel and 'id="show-inactive"' in panel
+    # The switches are no longer next to the search box.
+    before_panel = html.split('id="filter-panel"')[0]
+    assert 'id="low-only"' not in before_panel and 'id="show-inactive"' not in before_panel
+
+
+def test_staff_filter_panel_has_low_stock_but_no_deactivated_switch():
+    html = page(login("staff1"), "/items")
+    panel = html.split('id="filter-panel"')[1].split("</main>")[0]
+    assert 'id="low-only"' in panel
+    assert "show-inactive" not in html

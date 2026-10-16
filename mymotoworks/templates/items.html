@@ -5,33 +5,39 @@
 {% block content %}
 {% include "_navbar.html" %}
 <main class="container py-4" id="items-main" data-admin="{{ 'true' if user.role == 'admin' else 'false' }}">
-  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
     <h1 class="h4 mb-0">Items</h1>
     {% if user.role == "admin" %}
-    <div class="d-flex align-items-center gap-3">
-      <div class="form-check form-switch mb-0">
-        <input id="show-inactive" type="checkbox" class="form-check-input" role="switch">
-        <label for="show-inactive" class="form-check-label">Show deactivated</label>
-      </div>
-      <button id="add-button" type="button" class="btn btn-primary bi bi-plus-lg"> Add item</button>
-    </div>
+    <button id="add-button" type="button" class="btn btn-primary bi bi-plus-lg"> Add item</button>
     {% endif %}
   </div>
 
-  <!-- Stays at the top while the list scrolls, so searching never needs a scroll back up. -->
+  <!-- Stays at the top while the list scrolls, so searching never needs a scroll back up. The
+       search box is always there; the other filters open from the Filter button. -->
   <div class="sticky-top bg-body py-2 mb-2">
-   <div class="row g-2 align-items-center">
-    <div class="col-12 col-sm">
+    <div class="d-flex gap-2">
       <input id="search" type="search" class="form-control" placeholder="Search name, model or part no."
              aria-label="Search name, model or part no." autocomplete="off">
+      <button id="filter-button" type="button" class="btn btn-outline-secondary bi bi-funnel flex-shrink-0"
+              data-bs-toggle="collapse" data-bs-target="#filter-panel" aria-expanded="false"
+              aria-controls="filter-panel" aria-label="Filters">
+        <span id="filter-count" class="badge text-bg-primary ms-1 d-none"></span>
+      </button>
     </div>
-    <div class="col-auto">
-      <div class="form-check form-switch mb-0">
-        <input id="low-only" type="checkbox" class="form-check-input" role="switch">
-        <label for="low-only" class="form-check-label">Low stock only</label>
+    <div class="collapse" id="filter-panel">
+      <div class="card card-body mt-2 gap-3">
+        <div class="form-check form-switch mb-0">
+          <input id="low-only" type="checkbox" class="form-check-input" role="switch">
+          <label for="low-only" class="form-check-label">Low stock only</label>
+        </div>
+        {% if user.role == "admin" %}
+        <div class="form-check form-switch mb-0">
+          <input id="show-inactive" type="checkbox" class="form-check-input" role="switch">
+          <label for="show-inactive" class="form-check-label">Show deactivated</label>
+        </div>
+        {% endif %}
       </div>
     </div>
-   </div>
   </div>
 
   <div id="load-error" class="alert alert-danger py-2 d-none" role="alert"></div>

@@ -135,9 +135,19 @@ const loadItems = async () => {
   }
 };
 
-// Searching or switching the filter starts again from page 1.
+// updateFilterCount() -> the Filter button shows how many switches are on, e.g. "2", so a hidden
+// filter is never a surprise. Nothing is shown when no filter is on.
+const updateFilterCount = () => {
+  const count = document.querySelectorAll("#filter-panel input:checked").length;
+  const badgeElement = document.getElementById("filter-count");
+  badgeElement.textContent = String(count);
+  badgeElement.classList.toggle("d-none", count === 0);
+};
+
+// Searching or switching a filter starts again from page 1.
 const reloadFromStart = () => {
   page = 1;
+  updateFilterCount();
   loadItems();
 };
 
