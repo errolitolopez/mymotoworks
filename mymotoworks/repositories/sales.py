@@ -11,11 +11,13 @@ SALE_COLUMNS = (
 
 
 class SaleRepository(Repository):
-    def create(self, sale_date, user_id, total, client_ref, note="", replaces_sale_id=None):
+    def create(self, sale_date, user_id, total, client_ref, note="", replaces_sale_id=None, approved_by=None):
+        """Add a sale. `approved_by` is the admin's id when the sale is approved at once, or None when
+        it waits for approval."""
         cursor = self.execute(
-            "INSERT INTO sales (sale_date, user_id, total, client_ref, note, replaces_sale_id) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (sale_date, user_id, total, client_ref, note, replaces_sale_id),
+            "INSERT INTO sales (sale_date, user_id, total, client_ref, note, replaces_sale_id, approved_by, "
+            "approved_at) VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? IS NULL THEN NULL ELSE CURRENT_TIMESTAMP END)",
+            (sale_date, user_id, total, client_ref, note, replaces_sale_id, approved_by, approved_by),
         )
         return cursor.lastrowid
 
@@ -48,15 +50,36 @@ class SaleRepository(Repository):
             "WHERE sales.sale_date = ? ORDER BY sales.id DESC", (sale_date,))
 
     def day_totals(self, sale_date):
-        """{"count", "total", "tubo"} of the valid (not voided) sales of the day."""
+        """Totals of the day's approved sales that are not voided, and the pending ones apart:
+        {"count", "total", "tubo", "pending": {"count", "total"}}."""
         row = self.one(
             "SELECT COUNT(*) AS count, COALESCE(SUM(total), 0) AS total FROM sales "
-            "WHERE sale_date = ? AND voided_at IS NULL", (sale_date,))
+            "WHERE sale_date = ? AND voided_at IS NULL AND approved_at IS NOT NULL", (sale_date,))
         tubo = self.value(
             "SELECT COALESCE(SUM((sale_lines.benta - sale_lines.puhunan) * sale_lines.qty), 0) "
             "FROM sale_lines JOIN sales ON sales.id = sale_lines.sale_id "
-            "WHERE sales.sale_date = ? AND sales.voided_at IS NULL", (sale_date,))
-        return {"count": row["count"], "total": row["total"], "tubo": tubo}
+            "WHERE sales.sale_date = ? AND sales.voided_at IS NULL AND sales.approved_at IS NOT NULL", (sale_date,))
+        waiting = self.one(
+            "SELECT COUNT(*) AS count, COALESCE(SUM(total), 0) AS total FROM sales "
+            "WHERE sale_date = ? AND voided_at IS NULL AND approved_at IS NULL", (sale_date,))
+        return {"count": row["count"], "total": row["total"], "tubo": tubo,
+                "pending": {"count": waiting["count"], "total": waiting["total"]}}
+
+    def pending_ids(self, sale_date):
+        """The ids of the day's sales that wait for approval (not voided)."""
+        return [row["id"] for row in self.all(
+            "SELECT id FROM sales WHERE sale_date = ? AND voided_at IS NULL AND approved_at IS NULL "
+            "ORDER BY id", (sale_date,))]
+
+    def pending_overview(self):
+        """{"count", "oldest_date"} of every sale waiting for approval, on any day."""
+        row = self.one("SELECT COUNT(*) AS count, MIN(sale_date) AS oldest FROM sales "
+                       "WHERE voided_at IS NULL AND approved_at IS NULL")
+        return {"count": row["count"], "oldest_date": row["oldest"]}
+
+    def mark_approved(self, sale_id, user_id):
+        self.execute("UPDATE sales SET approved_at = CURRENT_TIMESTAMP, approved_by = ? WHERE id = ?",
+                     (user_id, sale_id))
 
     def mark_voided(self, sale_id, user_id, reason):
         self.execute(

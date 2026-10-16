@@ -26,6 +26,14 @@
     </div>
   </div>
 
+  <!-- Staff sales wait here until the admin approves them; they are not in the totals above. -->
+  <div id="pending-box" class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2 d-none" role="status">
+    <span id="pending-text"></span>
+    {% if user.role == "admin" %}
+    <button id="approve-all" type="button" class="btn btn-success bi bi-check2-all"> Approve all</button>
+    {% endif %}
+  </div>
+
   <div id="load-error" class="alert alert-danger py-2 d-none" role="alert"></div>
   <div id="sale-list" class="d-flex flex-column gap-2"></div>
   <p id="empty-state" class="text-body-secondary text-center py-4 d-none">No sales for this day.</p>

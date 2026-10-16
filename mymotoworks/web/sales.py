@@ -51,6 +51,20 @@ def api_copy(sale_id):
     return jsonify(service().copy_data(sale_id))
 
 
+@bp.post("/api/sales/approve-all")
+@role_required_api("admin")
+def api_approve_all():
+    """Body: {date?}. Approves every pending sale of that day (today when missing). Admin only."""
+    return jsonify(service().approve_all(json_body().get("date")))
+
+
+@bp.post("/api/sales/<int:sale_id>/approve")
+@role_required_api("admin")
+def api_approve(sale_id):
+    """Approve one pending sale: its stock is taken now. Admin only."""
+    return jsonify(service().approve(sale_id))
+
+
 @bp.post("/api/sales/<int:sale_id>/void")
 @role_required_api("admin")
 def api_void(sale_id):

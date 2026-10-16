@@ -51,6 +51,10 @@ CREATE TABLE IF NOT EXISTS sales (
     note TEXT NOT NULL DEFAULT '',
     -- Set when this sale corrects an earlier one: the earlier sale was voided and is kept as history.
     replaces_sale_id INTEGER REFERENCES sales(id),
+    -- A staff sale waits (approved_at is empty) and does not touch the stock until the admin approves it.
+    -- The admin's own sales are approved when they are saved.
+    approved_by INTEGER REFERENCES users(id),
+    approved_at TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

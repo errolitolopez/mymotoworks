@@ -52,11 +52,15 @@ class SaleService(Service):
             priced.append((item, line["qty"], benta))
             total += line["qty"] * benta
 
+        # The admin's own sale is approved at once. A staff sale waits, and does not touch the stock
+        # until the admin approves it.
+        admin = self.user["role"] == "admin"
         sale_id = self.sales.create(request["sale_date"], self.user["id"], total, request["client_ref"],
-                                    request["note"], old["id"] if old else None)
+                                    request["note"], old["id"] if old else None,
+                                    self.user["id"] if admin else None)
         for item, qty, benta in priced:
             self.sales.add_line(sale_id, item, qty, benta)
-            if item["track_stock"]:
+            if admin and item["track_stock"]:
                 self.items.change_stock(item["id"], -qty)
         if old:
             self._cancel(old, f"Replaced by sale #{sale_id}")
@@ -64,13 +68,49 @@ class SaleService(Service):
         return {"sale": self._json(self.sales.get(sale_id)), "duplicate": False}
 
     def _cancel(self, sale, reason):
-        """Void a sale (no commit): put back the stock its lines took and mark it voided."""
-        for line in self.sales.lines(sale["id"]):
-            # `tracked` says whether this line took stock when it was sold. Using it, not the item's
-            # current setting, puts back exactly what was taken.
-            if line["tracked"]:
-                self.items.change_stock(line["item_id"], line["qty"])
+        """Void a sale (no commit): put back the stock its lines took and mark it voided. A sale that
+        was never approved took no stock, so none is put back."""
+        if sale["approved_at"] is not None:
+            for line in self.sales.lines(sale["id"]):
+                # `tracked` says whether this line takes stock. Using it, not the item's current
+                # setting, puts back exactly what was taken.
+                if line["tracked"]:
+                    self.items.change_stock(line["item_id"], line["qty"])
         self.sales.mark_voided(sale["id"], self.user["id"], reason)
+
+    def _approve(self, sale):
+        """Approve a sale (no commit): its lines take their stock now. Stock may go below 0."""
+        for line in self.sales.lines(sale["id"]):
+            if line["tracked"]:
+                self.items.change_stock(line["item_id"], -line["qty"])
+        self.sales.mark_approved(sale["id"], self.user["id"])
+
+    def approve(self, sale_id):
+        """The admin approves a pending sale. Returns its JSON."""
+        sale = self.sales.get(sale_id)
+        if sale is None:
+            raise NotFoundError("Sale not found.")
+        if sale["voided_at"] is not None:
+            raise ValidationError("This sale was voided.")
+        if sale["approved_at"] is not None:
+            raise ValidationError("This sale is already approved.")
+        self._approve(sale)
+        self.commit()
+        return {"sale": self._json(self.sales.get(sale_id))}
+
+    def approve_all(self, date_text=None):
+        """The admin approves every pending sale of one day in one step (today when no date)."""
+        day = config.shop_today() if date_text in (None, "") else clean_date(date_text)
+        approved = 0
+        for sale_id in self.sales.pending_ids(day.isoformat()):
+            self._approve(self.sales.get(sale_id))
+            approved += 1
+        self.commit()
+        return {"approved": approved, "date": day.isoformat()}
+
+    def pending_overview(self):
+        """{"count", "oldest_date"} of the sales waiting for approval, for the admin's Home page."""
+        return self.sales.pending_overview()
 
     def copy_data(self, sale_id):
         """What the Sell page needs to start a new cart from this sale: its lines with the price that

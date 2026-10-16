@@ -24,7 +24,7 @@ def sale_count():
     return db_query("SELECT COUNT(*) AS n FROM sales")[0]["n"]
 
 
-def test_staff_sale_saves_the_total_lines_and_lowers_stock(admin):
+def test_staff_sale_saves_the_total_and_lines_but_waits_for_approval(admin):
     item = make_item(admin, stock=3)  # benta 15000, puhunan 10350
     staff = login("staff1")
     response = sell(staff, [{"item_id": item["id"], "qty": 2}])
@@ -35,7 +35,8 @@ def test_staff_sale_saves_the_total_lines_and_lowers_stock(admin):
     line = sale["lines"][0]
     assert line["name"] == "AIR FILTER SUNTAL" and line["qty"] == 2
     assert line["benta"] == 15000 and line["line_total"] == 30000
-    assert stock_of(admin, item) == 1
+    assert sale["status"] == "pending"
+    assert stock_of(admin, item) == 3  # a pending sale does not touch the stock
 
 
 def test_staff_never_see_cost_or_profit_in_a_sale(admin):
@@ -154,7 +155,7 @@ def test_a_double_tap_with_the_same_reference_saves_once(admin):
     assert first.status_code == 201 and second.status_code == 200
     assert second.get_json()["duplicate"] is True
     assert second.get_json()["sale"]["id"] == first.get_json()["sale"]["id"]
-    assert sale_count() == 1 and stock_of(admin, item) == 3
+    assert sale_count() == 1 and stock_of(admin, item) == 5  # pending: stock untouched
 
 
 def test_a_new_reference_is_a_new_sale(admin):
@@ -231,7 +232,9 @@ def test_the_day_lists_sales_newest_first_with_totals(admin):
     data = day(staff).get_json()
     assert data["date"] == today()
     assert [sale["id"] for sale in data["sales"]] == [second["id"], first["id"]]
-    assert data["summary"]["count"] == 2 and data["summary"]["total"] == 15000 + 30000
+    # The staff sale is pending, so only the admin's own (approved) sale is in the totals.
+    assert data["summary"]["count"] == 1 and data["summary"]["total"] == 30000
+    assert data["summary"]["pending"] == {"count": 1, "total": 15000}
     assert data["sales"][0]["lines"][0]["qty"] == 2
 
 
@@ -264,7 +267,8 @@ def test_admin_reads_any_day_and_sales_stay_on_their_own_day(admin):
     assert day(admin).get_json()["summary"]["count"] == 0
     assert day(admin, yesterday).get_json()["summary"]["count"] == 1
     assert day(admin, "2020-01-01").get_json() == {
-        "date": "2020-01-01", "sales": [], "summary": {"count": 0, "total": 0, "tubo": 0}}
+        "date": "2020-01-01", "sales": [],
+        "summary": {"count": 0, "total": 0, "tubo": 0, "pending": {"count": 0, "total": 0}}}
 
 
 def test_bad_day_is_refused(admin):
@@ -295,7 +299,7 @@ def void(client, sale_id, reason="Wrong item"):
 
 def test_void_puts_the_stock_back_and_leaves_the_totals(admin):
     item = make_item(admin, stock=5)
-    sale = sell(login("staff1"), [{"item_id": item["id"], "qty": 3}]).get_json()["sale"]
+    sale = sell(admin, [{"item_id": item["id"], "qty": 3}]).get_json()["sale"]
     assert stock_of(admin, item) == 2
     response = void(admin, sale["id"], "  Customer changed mind ")
     assert response.status_code == 200
@@ -303,7 +307,7 @@ def test_void_puts_the_stock_back_and_leaves_the_totals(admin):
     assert voided["voided"] is True and voided["void_reason"] == "Customer changed mind"
     assert stock_of(admin, item) == 5
     data = day(admin).get_json()
-    assert data["summary"] == {"count": 0, "total": 0, "tubo": 0}
+    assert data["summary"] == {"count": 0, "total": 0, "tubo": 0, "pending": {"count": 0, "total": 0}}
     assert data["sales"][0]["voided"] is True  # still listed, struck through on the page
     assert db_query("SELECT voided_by FROM sales")[0]["voided_by"] is not None
 
@@ -313,7 +317,7 @@ def test_staff_cannot_void(admin):
     staff = login("staff1")
     sale = sell(staff, [{"item_id": item["id"], "qty": 1}]).get_json()["sale"]
     assert void(staff, sale["id"]).status_code == 403
-    assert stock_of(admin, item) == 4
+    assert stock_of(admin, item) == 5  # pending: never touched
 
 
 def test_voiding_twice_puts_stock_back_only_once(admin):
@@ -426,6 +430,13 @@ def test_an_old_database_without_the_note_column_is_upgraded_and_keeps_its_sales
 
     path = str(tmp_path / "old.db")
     old = sqlite3.connect(path)
+    # A real older database always has its users, and the sales point at them.
+    old.execute("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, "
+                "username TEXT NOT NULL UNIQUE COLLATE NOCASE, password_hash TEXT NOT NULL, "
+                "role TEXT NOT NULL CHECK (role IN ('admin', 'staff')), "
+                "must_change_password INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1, "
+                "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+    old.execute("INSERT INTO users (name, username, password_hash, role) VALUES ('Administrator', 'admin', 'x', 'admin')")
     old.execute("CREATE TABLE sales (id INTEGER PRIMARY KEY AUTOINCREMENT, sale_date TEXT NOT NULL, "
                 "user_id INTEGER NOT NULL, total INTEGER NOT NULL, client_ref TEXT UNIQUE, voided_at TEXT, "
                 "voided_by INTEGER, void_reason TEXT NOT NULL DEFAULT '', "
@@ -456,7 +467,7 @@ def test_copy_gives_the_items_prices_and_note_and_changes_nothing(admin):
     assert line["qty"] == 2 and line["benta"] == 14000          # what was charged, not the new price
     assert line["item"]["id"] == item["id"] and line["item"]["benta"] == 20000
     assert "puhunan" not in copy_of(staff, sale["id"]).get_data(as_text=True)
-    assert sale_count() == 1 and stock_of(admin, item) == 7
+    assert sale_count() == 1 and stock_of(admin, item) == 9  # the staff sale is pending: stock untouched
 
 
 def test_copy_leaves_out_items_that_are_no_longer_for_sale(admin):
@@ -489,7 +500,7 @@ def test_a_voided_sale_can_still_be_copied(admin):
 
 def test_replace_voids_the_old_sale_and_keeps_both_records(admin):
     item = make_item(admin, stock=5)
-    old = sell(login("staff1"), [{"item_id": item["id"], "qty": 3}], note="Ben").get_json()["sale"]
+    old = sell(admin, [{"item_id": item["id"], "qty": 3}], note="Ben").get_json()["sale"]
     assert stock_of(admin, item) == 2
     response = sell(admin, [{"item_id": item["id"], "qty": 2}], note="Ben", replaces=old["id"])
     assert response.status_code == 201, response.get_json()
@@ -522,7 +533,7 @@ def test_only_the_admin_can_replace(admin):
     old = sell(staff, [{"item_id": item["id"], "qty": 1}]).get_json()["sale"]
     response = sell(staff, [{"item_id": item["id"], "qty": 1}], replaces=old["id"])
     assert response.status_code == 403 and response.get_json()["error"] == "Only the admin can replace a sale."
-    assert sale_count() == 1 and stock_of(admin, item) == 4
+    assert sale_count() == 1 and stock_of(admin, item) == 5
     assert day(admin).get_json()["sales"][0]["voided"] is False
 
 
@@ -575,3 +586,178 @@ def test_the_sell_page_has_the_replace_box_for_the_admin_only(admin):
     assert 'id="replace-box"' in admin.get("/sell?copy=1").get_data(as_text=True)
     assert 'id="replace-box"' not in login("staff1").get("/sell?copy=1").get_data(as_text=True)
     assert 'id="copy-banner"' in login("staff1").get("/sell").get_data(as_text=True)
+
+
+def pending_sale(admin, qty=2, **fields):
+    """A staff sale (pending) of a fresh item with stock 5. Returns (item, sale)."""
+    item = make_item(admin, stock=5, **fields)
+    sale = sell(login("staff1"), [{"item_id": item["id"], "qty": qty}]).get_json()["sale"]
+    return item, sale
+
+
+def approve(client, sale_id):
+    return client.post(f"/api/sales/{sale_id}/approve")
+
+
+def test_the_admins_own_sale_is_approved_at_once_and_staff_sale_is_pending(admin):
+    item = make_item(admin, stock=5)
+    mine = sell(admin, [{"item_id": item["id"], "qty": 1}]).get_json()["sale"]
+    theirs = sell(login("staff1"), [{"item_id": item["id"], "qty": 1}]).get_json()["sale"]
+    assert mine["status"] == "approved" and theirs["status"] == "pending"
+    assert stock_of(admin, item) == 4  # only the admin's sale took stock
+
+
+def test_pending_sales_stay_out_of_the_totals_but_are_shown_apart(admin):
+    item, sale = pending_sale(admin, qty=2)
+    data = day(admin).get_json()
+    assert data["summary"] == {"count": 0, "total": 0, "tubo": 0, "pending": {"count": 1, "total": 30000}}
+    assert data["sales"][0]["status"] == "pending"
+    staff_summary = day(login("staff1")).get_json()["summary"]
+    assert staff_summary == {"count": 0, "total": 0, "pending": {"count": 1, "total": 30000}}
+
+
+def test_approving_lowers_the_stock_and_counts_the_sale(admin):
+    item, sale = pending_sale(admin, qty=2)
+    response = approve(admin, sale["id"])
+    assert response.status_code == 200 and response.get_json()["sale"]["status"] == "approved"
+    assert stock_of(admin, item) == 3
+    data = day(admin).get_json()
+    assert data["summary"]["count"] == 1 and data["summary"]["total"] == 30000
+    assert data["summary"]["tubo"] == 9300 and data["summary"]["pending"] == {"count": 0, "total": 0}
+
+
+def test_approving_may_take_stock_below_zero(admin):
+    item = make_item(admin, stock=1)
+    sale = sell(login("staff1"), [{"item_id": item["id"], "qty": 3}]).get_json()["sale"]
+    approve(admin, sale["id"])
+    assert stock_of(admin, item) == -2
+
+
+def test_approving_an_uncounted_item_never_changes_stock(admin):
+    item = make_item(admin, name="LINIS", track_stock=False)
+    sale = sell(login("staff1"), [{"item_id": item["id"], "qty": 3}]).get_json()["sale"]
+    approve(admin, sale["id"])
+    assert stock_of(admin, item) == 0
+
+
+def test_staff_cannot_approve_and_nothing_changes(admin):
+    item, sale = pending_sale(admin)
+    assert approve(login("staff1"), sale["id"]).status_code == 403
+    assert stock_of(admin, item) == 5 and day(admin).get_json()["sales"][0]["status"] == "pending"
+
+
+def test_approving_twice_or_a_voided_or_unknown_sale_is_refused(admin):
+    item, sale = pending_sale(admin)
+    assert approve(admin, sale["id"]).status_code == 200
+    again = approve(admin, sale["id"])
+    assert again.status_code == 400 and again.get_json()["error"] == "This sale is already approved."
+    assert stock_of(admin, item) == 3
+    other_item, other = pending_sale(admin)
+    void(admin, other["id"], "Not real")
+    refused = approve(admin, other["id"])
+    assert refused.status_code == 400 and refused.get_json()["error"] == "This sale was voided."
+    assert stock_of(admin, other_item) == 5
+    assert approve(admin, 9999).status_code == 404
+
+
+def test_rejecting_a_pending_sale_never_touches_the_stock(admin):
+    item, sale = pending_sale(admin, qty=2)
+    response = void(admin, sale["id"], "Wrong customer")
+    assert response.status_code == 200 and response.get_json()["sale"]["status"] == "rejected"
+    assert stock_of(admin, item) == 5  # nothing was taken, so nothing comes back
+    data = day(admin).get_json()
+    assert data["summary"]["pending"] == {"count": 0, "total": 0} and data["summary"]["count"] == 0
+    assert data["sales"][0]["status"] == "rejected"
+    assert approve(admin, sale["id"]).status_code == 400
+
+
+def test_voiding_an_approved_sale_still_puts_the_stock_back(admin):
+    item, sale = pending_sale(admin, qty=2)
+    approve(admin, sale["id"])
+    assert stock_of(admin, item) == 3
+    response = void(admin, sale["id"], "Customer returned it")
+    assert response.get_json()["sale"]["status"] == "voided" and stock_of(admin, item) == 5
+
+
+def test_replacing_a_pending_sale_puts_back_no_stock(admin):
+    item, old = pending_sale(admin, qty=3)
+    new = sell(admin, [{"item_id": item["id"], "qty": 2}], replaces=old["id"]).get_json()["sale"]
+    assert new["status"] == "approved"
+    assert stock_of(admin, item) == 3  # 5 - 2: the pending sale never took its 3
+    listed = {sale["id"]: sale for sale in day(admin).get_json()["sales"]}
+    assert listed[old["id"]]["status"] == "rejected"
+
+
+def test_approve_all_approves_the_days_pending_sales_in_one_step(admin):
+    first, a = pending_sale(admin, qty=1)
+    second, b = pending_sale(admin, qty=2, name="SPARK PLUG")
+    third, c = pending_sale(admin, qty=1, name="BULB")
+    void(admin, c["id"], "Not real")
+    yesterday = (shop_today() - timedelta(days=1)).isoformat()
+    other = sell(admin, [{"item_id": first["id"], "qty": 1}], sale_date=yesterday)  # approved already
+    assert other.status_code == 201
+    response = admin.post("/api/sales/approve-all", json={})
+    assert response.status_code == 200 and response.get_json() == {"approved": 2, "date": today()}
+    assert stock_of(admin, first) == 3 and stock_of(admin, second) == 3 and stock_of(admin, third) == 5
+    again = admin.post("/api/sales/approve-all", json={"date": today()})
+    assert again.get_json()["approved"] == 0
+
+
+def test_approve_all_rules(admin):
+    item, sale = pending_sale(admin)
+    assert admin.post("/api/sales/approve-all", json={"date": "x"}).status_code == 400
+    assert login("staff1").post("/api/sales/approve-all", json={}).status_code == 403
+    yesterday = (shop_today() - timedelta(days=1)).isoformat()
+    assert admin.post("/api/sales/approve-all", json={"date": yesterday}).get_json()["approved"] == 0
+    assert day(admin).get_json()["sales"][0]["status"] == "pending"
+
+
+def test_an_old_pending_sale_can_be_found_and_approved_on_its_own_day(admin):
+    item = make_item(admin, stock=5)
+    sale = sell(login("staff1"), [{"item_id": item["id"], "qty": 1}]).get_json()["sale"]
+    yesterday = (shop_today() - timedelta(days=1)).isoformat()
+    db_execute("UPDATE sales SET sale_date = ? WHERE id = ?", (yesterday, sale["id"]))
+    assert day(admin, yesterday).get_json()["summary"]["pending"]["count"] == 1
+    assert admin.post("/api/sales/approve-all", json={"date": yesterday}).get_json()["approved"] == 1
+    assert stock_of(admin, item) == 4
+
+
+def test_the_home_page_tells_the_admin_about_pending_sales(admin):
+    assert "waiting for approval" not in admin.get("/dashboard").get_data(as_text=True)
+    pending_sale(admin)
+    html = admin.get("/dashboard").get_data(as_text=True)
+    assert "1 sale waiting for approval" in html and f"/sales?date={today()}" in html
+    assert "waiting for approval" not in login("staff1").get("/dashboard").get_data(as_text=True)
+
+
+def test_sales_page_has_the_approve_all_button_for_the_admin_only(admin):
+    assert 'id="approve-all"' in admin.get("/sales").get_data(as_text=True)
+    assert 'id="approve-all"' not in login("staff1").get("/sales").get_data(as_text=True)
+
+
+def test_sales_made_before_approval_existed_are_upgraded_as_approved(tmp_path):
+    import sqlite3
+    from mymotoworks import create_app
+
+    path = str(tmp_path / "older.db")
+    old = sqlite3.connect(path)
+    # A real older database always has its users, and the sales point at them.
+    old.execute("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, "
+                "username TEXT NOT NULL UNIQUE COLLATE NOCASE, password_hash TEXT NOT NULL, "
+                "role TEXT NOT NULL CHECK (role IN ('admin', 'staff')), "
+                "must_change_password INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1, "
+                "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+    old.execute("INSERT INTO users (name, username, password_hash, role) VALUES ('Administrator', 'admin', 'x', 'admin')")
+    old.execute("CREATE TABLE sales (id INTEGER PRIMARY KEY AUTOINCREMENT, sale_date TEXT NOT NULL, "
+                "user_id INTEGER NOT NULL, total INTEGER NOT NULL, client_ref TEXT UNIQUE, voided_at TEXT, "
+                "voided_by INTEGER, void_reason TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '', "
+                "replaces_sale_id INTEGER, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+    old.execute("INSERT INTO sales (sale_date, user_id, total) VALUES ('2026-10-16', 1, 500)")
+    old.commit()
+    old.close()
+    for _ in range(2):  # starting twice must not approve anything new or fail
+        create_app({"DATABASE": path})
+    upgraded = sqlite3.connect(path)
+    row = upgraded.execute("SELECT approved_at IS NOT NULL, approved_by FROM sales").fetchall()
+    assert row == [(1, 1)]  # the sales that already took stock count as approved
+    upgraded.close()

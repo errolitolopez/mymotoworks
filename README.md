@@ -47,8 +47,13 @@ with the right status, with nothing saved.
 ## Selling
 
 - **Sell** (staff land here after login): search an item, tap it into the cart, change the quantity
-  or the price of a line, save. Stock goes down for items whose stock is counted. A sale may take
-  stock below 0 (the cart warns); wrong counts are fixed with stock adjustments later.
+  or the price of a line, save. A sale may take stock below 0 (the cart warns); wrong counts are
+  fixed with stock adjustments later.
+- **Approval**: a sale saved by staff is **pending**. It does not touch the stock and is not in the
+  day's total or tubo (the Sales page shows it apart). The admin approves it (one by one, or
+  "Approve all" for the day) and only then the stock goes down and the sale counts. The admin's own
+  sales are approved at once. Rejecting a pending sale takes no stock back, because none was taken.
+  The admin's Home page says how many sales wait for approval.
 - Each sale can have an optional **note** (up to 100 characters, for example the customer's name). It
   is saved with the sale and shown under the sale number on the Sales page.
 - Each cart has its own reference, so a double tap or a retry saves the sale only once. A bad line
@@ -56,8 +61,8 @@ with the right status, with nothing saved.
 - Staff record only today's sales; the admin can also pick a past day, never a future one.
 - **Sales**: the day's sales, newest first, each opening to show its items, with the day's count and
   total. Staff see today only and no cost or profit. The admin picks any day and sees tubo.
-- The admin can **void** a sale with a reason: its stock comes back (exactly what it took) and it
-  leaves the totals, but it stays in the list crossed out. Sales are never deleted.
+- The admin can **void** an approved sale with a reason: its stock comes back (exactly what it took)
+  and it leaves the totals, but it stays in the list crossed out. Sales are never deleted.
 
 ## Loading the old spreadsheet
 

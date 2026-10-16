@@ -36,6 +36,15 @@ def item_json(row, role):
     return item
 
 
+def sale_status(sale):
+    """"pending" (waits for approval), "approved", "rejected" (voided before it was approved) or
+    "voided" (voided after it was approved)."""
+    approved = sale["approved_at"] is not None
+    if sale["voided_at"] is not None:
+        return "voided" if approved else "rejected"
+    return "approved" if approved else "pending"
+
+
 def sale_json(sale, lines, role):
     """A sale with its lines. Cost and profit are only for the admin."""
     admin = role == "admin"
@@ -58,6 +67,7 @@ def sale_json(sale, lines, role):
         "total": sale["total"],
         "recorded_by": sale["user_name"],
         "recorded_at": shop_time_text(sale["created_at"]),
+        "status": sale_status(sale),
         "voided": sale["voided_at"] is not None,
         "void_reason": sale["void_reason"],
         "note": sale["note"],

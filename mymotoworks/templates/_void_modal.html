@@ -7,14 +7,14 @@
       </div>
       <div class="modal-body">
         <p id="void-summary" class="mb-3"></p>
-        <p class="text-body-secondary small">The stock goes back and the sale leaves the totals. The sale stays in the list, crossed out.</p>
-        <label for="void-reason" class="form-label">Why is it voided?</label>
+        <p id="void-help" class="text-body-secondary small"></p>
+        <label for="void-reason" id="void-label" class="form-label"></label>
         <input id="void-reason" type="text" class="form-control" maxlength="200" autocomplete="off" required>
         <div id="void-error" class="alert alert-danger py-2 mt-3 mb-0 d-none" role="alert"></div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary bi bi-x-lg" data-bs-dismiss="modal"> Cancel</button>
-        <button id="void-button" type="submit" class="btn btn-danger bi bi-slash-circle"> Void sale</button>
+        <button id="void-button" type="submit" class="btn btn-danger bi bi-slash-circle"></button>
       </div>
     </form>
   </div>

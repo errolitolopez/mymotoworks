@@ -311,7 +311,9 @@ saveButton.addEventListener("click", async () => {
     }
     const message = document.getElementById("sale-message");
     message.textContent = `Sale #${data.sale.id} saved: ₱${pesos(data.sale.total)}.` +
-      (replacing ? ` Sale #${replaceable.id} was voided.` : "");
+      (replacing ? ` Sale #${replaceable.id} was voided.` : "") +
+      // A staff sale waits for the admin and does not touch the stock yet.
+      (data.sale.status === "pending" ? " It will count after the admin approves it." : "");
     message.classList.remove("d-none");
     cart = [];
     clearCopy();
