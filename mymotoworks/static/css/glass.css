@@ -1,27 +1,26 @@
-/* A small theme on top of Bootstrap: a plain page (white in the light theme, near-black in the
-   dark theme) with solid panels (cards, modals, the tab bar) that have a thin border. Light and
-   dark follow data-bs-theme (see theme.js). */
+/* A small theme on top of Bootstrap: a calm gray gradient page and frosted panels (cards,
+   navbar, modals). Light and dark follow data-bs-theme (see theme.js). */
 
 :root {
-  --glass-bg: #fff;
-  --glass-border: #dee2e6;
-  --glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --glass-blur: none;
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(226, 232, 240, 0.8);
+  --glass-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --glass-blur: blur(12px);
+  --glass-bg-strong: rgba(255, 255, 255, 0.88);
   --glass-solid: #fff;
-  --page-base: #fff;
-  --page-gradient: none;
-  /* Bootstrap's own page color, so utilities like bg-body (the pinned search bar) match the page. */
-  --bs-body-bg: var(--page-base);
+  /* A soft white-to-light-blue page instead of gray. */
+  --page-base: #f4f8ff;
+  --page-gradient: linear-gradient(160deg, #ffffff 0%, #eef5ff 55%, #dfeafd 100%);
 }
 
 [data-bs-theme="dark"] {
-  --glass-bg: #161b22;
-  --glass-border: #30363d;
-  --glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --glass-solid: #161b22;
-  --page-base: #0d1117;
-  --page-gradient: none;
-  --bs-body-bg: var(--page-base);
+  --glass-bg: rgba(15, 23, 42, 0.6);
+  --glass-border: rgba(51, 65, 85, 0.8);
+  --glass-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --glass-bg-strong: rgba(15, 23, 42, 0.9);
+  --glass-solid: #1e293b;
+  --page-base: #0f172a;
+  --page-gradient: radial-gradient(circle at top left, hsl(222 47% 15%), hsl(222 47% 11%));
 }
 
 body {
@@ -30,7 +29,8 @@ body {
   background-attachment: fixed;
 }
 
-/* Set Bootstrap's own variables, not its selectors. */
+/* Set Bootstrap's own variables, not its selectors. Blur only on panels, never per list row:
+   it is slow on phones. */
 .card,
 .modal-content {
   --bs-card-bg: var(--glass-bg);
@@ -156,5 +156,20 @@ body {
   /* Full-screen forms use the visible height, so Save is not hidden under the browser bar. */
   .modal-fullscreen-sm-down {
     height: 100dvh;
+  }
+}
+
+/* The pinned search area on the Items page: the same frosted glass as the panels, so it does not
+   show as a flat block, and the list blurs softly behind it as it scrolls. One panel only, never
+   per row (blur is slow on phones). */
+.sticky-toolbar {
+  background-color: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur);
+  border-radius: 0 0 1rem 1rem;
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .sticky-toolbar {
+    background-color: var(--glass-solid);
   }
 }
