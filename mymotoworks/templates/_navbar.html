@@ -1,11 +1,14 @@
 {# One list of pages, used by the desktop tabs and by the phone tab bar. #}
 {% set tabs = [("sales.sell_page", "Sell", "bi-cart3"), ("sales.history_page", "Sales", "bi-receipt"), ("items.page", "Items", "bi-box-seam")] %}
-{% if user.role == "admin" %}{% set tabs = [("dashboard.page", "Home", "bi-house")] + tabs + [("accounts.page", "Users", "bi-people"), ("reports.page", "Reports", "bi-graph-up")] %}{% endif %}
+{% if user.role == "admin" %}{% set tabs = [("dashboard.page", "Home", "bi-house")] + tabs + [("reports.page", "Reports", "bi-graph-up")] %}{% endif %}
 
 <nav class="navbar border-bottom">
   <div class="container">
-    <span class="navbar-brand fw-bold bi bi-wrench-adjustable"> mymotoworks</span>
-    <!-- One account menu for every screen size: Password, Theme and Logout. -->
+    <span class="navbar-brand fw-bold d-flex align-items-center gap-2">
+      <img src="{{ url_for('static', filename='img/logo-128.png') }}" width="32" height="32" alt="">
+      Jaryl's Motoworks
+    </span>
+    <!-- One account menu for every screen size: Users (admin), Password, Theme and Logout. -->
     <div class="dropdown">
       <button class="btn btn-outline-secondary bi bi-person-circle dropdown-toggle" type="button"
               data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu">
@@ -13,6 +16,9 @@
       </button>
       <ul class="dropdown-menu dropdown-menu-end">
         <li><h6 class="dropdown-header">{{ user.name }} ({{ user.role }})</h6></li>
+        {% if user.role == "admin" %}
+        <li><a class="dropdown-item bi bi-people {{ 'active' if request.endpoint == 'accounts.page' }}" href="{{ url_for('accounts.page') }}"> Users</a></li>
+        {% endif %}
         <li><a class="dropdown-item bi bi-key" href="{{ url_for('auth.change_password_page') }}"> Password</a></li>
         <li><button class="dropdown-item bi bi-circle-half" type="button" data-theme-toggle> Theme</button></li>
         <li><hr class="dropdown-divider"></li>

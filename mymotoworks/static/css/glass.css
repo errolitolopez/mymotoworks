@@ -234,8 +234,26 @@ body {
   max-height: 60vh;
   max-height: 60dvh;
   overflow-y: auto;
-  /* Rows keep their own panel color; the box only clips and scrolls. */
-  background-color: var(--glass-solid);
+  /* The box is the glass panel (one blur for the whole list, never per row); the rows on it are
+     see-through. border-color needs !important to beat Bootstrap's .border utility. */
+  background-color: var(--glass-bg);
+  border-color: var(--glass-border) !important;
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+  --bs-list-group-bg: transparent;
+  --bs-list-group-border-color: var(--glass-border);
+}
+
+/* Where blur is not supported, or the person asked for less transparency, use a plain box. */
+@supports not (backdrop-filter: blur(1px)) {
+  .item-scroll { background-color: var(--glass-solid); }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .item-scroll {
+    background-color: var(--glass-solid);
+    backdrop-filter: none;
+  }
 }
 
 @media (min-width: 768px) {
@@ -258,3 +276,22 @@ body {
   top: 0;
   background-color: var(--glass-solid);
 }
+
+/* A faint shop logo in the bottom-right corner of the page, behind everything. The glass panels blur
+   it where they cover it. The logo has its own dark background, so it is dimmer on the dark theme. */
+body::before {
+  content: "";
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  width: min(420px, 70vw);
+  height: min(420px, 70vw);
+  z-index: -1;
+  background: url("../img/logo-320.png") no-repeat bottom right / contain;
+  opacity: 0.1;
+  pointer-events: none;
+}
+[data-bs-theme="dark"] body::before {
+  opacity: 0.07;
+}
+@media print { body::before { display: none; } }

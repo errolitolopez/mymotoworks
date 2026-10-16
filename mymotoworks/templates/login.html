@@ -1,13 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}Login · mymotoworks{% endblock %}
+{% block title %}Login · Jaryl's Motoworks{% endblock %}
 
 {% block content %}
 <main class="container d-flex align-items-center justify-content-center flex-grow-1">
   <div class="card w-100" style="max-width: 380px;">
     <div class="card-body p-4">
-      <h1 class="h4 text-center mb-1 bi bi-wrench-adjustable"> mymotoworks</h1>
-      <p class="text-center text-body-secondary mb-4">Jaryl's Motoworks</p>
+      <div class="text-center mb-2">
+        <img src="{{ url_for('static', filename='img/logo-128.png') }}" width="96" height="96" alt="Jaryl's Motoworks logo">
+      </div>
+      <h1 class="h4 text-center mb-4">Jaryl's Motoworks</h1>
 
       <form id="login-form" novalidate>
         <div class="mb-3">
