@@ -1,23 +1,27 @@
-/* A small theme on top of Bootstrap: a calm gray gradient page and frosted panels (cards,
-   navbar, modals). Light and dark follow data-bs-theme (see theme.js). */
+/* A small theme on top of Bootstrap: a plain page (white in the light theme, near-black in the
+   dark theme) with solid panels (cards, modals, the tab bar) that have a thin border. Light and
+   dark follow data-bs-theme (see theme.js). */
 
 :root {
-  --glass-bg: rgba(255, 255, 255, 0.6);
-  --glass-border: rgba(226, 232, 240, 0.8);
-  --glass-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-  --glass-blur: blur(12px);
+  --glass-bg: #fff;
+  --glass-border: #dee2e6;
+  --glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --glass-blur: none;
   --glass-solid: #fff;
-  --page-base: #f3f4f6;
-  --page-gradient: radial-gradient(circle at top left, hsl(220 13% 95%), hsl(220 13% 91%));
+  --page-base: #fff;
+  --page-gradient: none;
+  /* Bootstrap's own page color, so utilities like bg-body (the pinned search bar) match the page. */
+  --bs-body-bg: var(--page-base);
 }
 
 [data-bs-theme="dark"] {
-  --glass-bg: rgba(15, 23, 42, 0.6);
-  --glass-border: rgba(51, 65, 85, 0.8);
-  --glass-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
-  --glass-solid: #1e293b;
-  --page-base: #0f172a;
-  --page-gradient: radial-gradient(circle at top left, hsl(222 47% 15%), hsl(222 47% 11%));
+  --glass-bg: #161b22;
+  --glass-border: #30363d;
+  --glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --glass-solid: #161b22;
+  --page-base: #0d1117;
+  --page-gradient: none;
+  --bs-body-bg: var(--page-base);
 }
 
 body {
@@ -26,8 +30,7 @@ body {
   background-attachment: fixed;
 }
 
-/* Set Bootstrap's own variables, not its selectors. Blur only on panels, never per list row:
-   it is slow on phones. */
+/* Set Bootstrap's own variables, not its selectors. */
 .card,
 .modal-content {
   --bs-card-bg: var(--glass-bg);
