@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Restock history · mymotoworks{% endblock %}
+
+{% block content %}
+{% include "_navbar.html" %}
+<main class="container py-4" id="restocks-main">
+  <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0">Restock history</h1>
+    <a href="{{ url_for('restocks.new_page') }}" class="btn btn-primary bi bi-box-arrow-in-down"> New restock</a>
+  </div>
+
+  <div id="load-error" class="alert alert-danger py-2 d-none" role="alert"></div>
+  <div id="restock-list" class="d-flex flex-column gap-2"></div>
+  <p id="empty-state" class="text-body-secondary text-center py-4 d-none">No restocks yet.</p>
+
+  <div id="pager" class="d-flex justify-content-between align-items-center gap-2 mt-3 d-none">
+    <button id="prev-button" type="button" class="btn btn-outline-secondary bi bi-chevron-left"> Prev</button>
+    <span id="page-label" class="small text-body-secondary"></span>
+    <button id="next-button" type="button" class="btn btn-outline-secondary bi bi-chevron-right"> Next</button>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/restocks.js') }}"></script>
+{% endblock %}

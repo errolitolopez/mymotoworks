@@ -139,3 +139,9 @@ const actionMenu = (actions) => {
   wrapper.append(trigger, menu);
   return wrapper;
 };
+
+// formatDay("2026-10-16") -> "Oct 16, 2026". Read as a calendar day, so no time zone can shift it.
+const formatDay = (isoDate) => {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+};

@@ -35,3 +35,12 @@ class RestockRepository(Repository):
         return self.one(
             f"SELECT {RESTOCK_COLUMNS} FROM restocks JOIN users ON users.id = restocks.user_id "
             "WHERE restocks.user_id = ? AND restocks.client_ref = ?", (user_id, client_ref))
+
+    def count(self):
+        return self.value("SELECT COUNT(*) FROM restocks")
+
+    def page(self, limit, offset):
+        """One page of restocks, newest first, voided ones too."""
+        return self.all(
+            f"SELECT {RESTOCK_COLUMNS} FROM restocks JOIN users ON users.id = restocks.user_id "
+            "ORDER BY restocks.id DESC LIMIT ? OFFSET ?", (limit, offset))

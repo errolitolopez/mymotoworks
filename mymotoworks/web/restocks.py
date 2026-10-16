@@ -1,6 +1,6 @@
 """The Restock pages and API. Admin only: only the owner records what arrived."""
 
-from flask import Blueprint, jsonify, render_template
+from flask import Blueprint, jsonify, render_template, request
 
 from mymotoworks import config
 from mymotoworks.database import get_db
@@ -23,8 +23,18 @@ def new_page():
 @bp.get("/restocks")
 @role_required_page("admin")
 def history_page():
-    # The history page itself comes in feature B; until then the link goes to the new-restock page.
-    return render_template("restock.html", user=current_user(), today=config.shop_today().isoformat())
+    return render_template("restocks.html", user=current_user())
+
+
+@bp.get("/api/restocks")
+@role_required_api("admin")
+def api_list():
+    """?page= and ?per_page= (20 by default, at most 50). A bad number means the default."""
+    args = request.args
+    return jsonify(service().list(
+        page=args.get("page", 1, type=int),
+        per_page=args.get("per_page", RestockService.DEFAULT_PER_PAGE, type=int),
+    ))
 
 
 @bp.post("/api/restocks")

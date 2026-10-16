@@ -185,3 +185,59 @@ def test_restock_pages_are_for_the_admin_only(admin, client):
     for element in ('id="item-filter"', 'id="item-list"', 'id="tab-items"', 'id="tab-cart"', 'id="restock-note"',
                     'id="restock-date"', 'id="save-restock"'):
         assert element in html, element
+
+
+def many_restocks(admin, count):
+    item = make_item(admin, stock=0)
+    for number in range(count):
+        assert restock(admin, [{"item_id": item["id"], "qty": 1, "puhunan": 1000 + number}]).status_code == 201
+    return item
+
+
+def test_the_history_lists_restocks_newest_first_with_their_lines(admin):
+    item = make_item(admin, stock=3)
+    first = restock(admin, [{"item_id": item["id"], "qty": 2, "puhunan": 11000}], note="Ben").get_json()["restock"]
+    second = restock(admin, [{"item_id": item["id"], "qty": 5, "puhunan": 12000}]).get_json()["restock"]
+    data = admin.get("/api/restocks").get_json()
+    assert [row["id"] for row in data["restocks"]] == [second["id"], first["id"]]
+    assert data["total"] == 2 and data["page"] == 1 and data["pages"] == 1
+    older = data["restocks"][1]
+    assert older["note"] == "Ben" and older["lines"][0]["old_puhunan"] == 10350 and older["lines"][0]["puhunan"] == 11000
+    assert data["restocks"][0]["lines"][0]["old_puhunan"] == 11000
+
+
+def test_the_history_is_paged(admin):
+    many_restocks(admin, 25)
+    first = admin.get("/api/restocks").get_json()
+    assert first["total"] == 25 and first["pages"] == 2 and len(first["restocks"]) == 20
+    assert len(admin.get("/api/restocks?page=2").get_json()["restocks"]) == 5
+    assert admin.get("/api/restocks?page=99").get_json()["restocks"] == []
+    assert admin.get("/api/restocks?page=0").get_json()["page"] == 1
+    assert admin.get("/api/restocks?page=abc").get_json()["page"] == 1
+    assert len(admin.get("/api/restocks?per_page=5").get_json()["restocks"]) == 5
+    assert len(admin.get("/api/restocks?per_page=5000").get_json()["restocks"]) == 25  # capped at 50
+
+
+def test_an_empty_history(admin):
+    assert admin.get("/api/restocks").get_json() == {"restocks": [], "page": 1, "pages": 1, "total": 0}
+
+
+def test_the_time_is_shown_in_shop_time(admin):
+    from conftest import db_execute
+    item = make_item(admin, stock=0)
+    saved = restock(admin, [{"item_id": item["id"], "qty": 1}]).get_json()["restock"]
+    db_execute("UPDATE restocks SET created_at = '2026-10-16 02:30:00' WHERE id = ?", (saved["id"],))
+    assert admin.get("/api/restocks").get_json()["restocks"][0]["recorded_at"] == "10:30"  # UTC+8
+
+
+def test_the_history_is_for_the_admin_only(admin, client):
+    assert login("staff1").get("/api/restocks").status_code == 403
+    assert client.get("/api/restocks").status_code == 401
+    assert admin.get("/restocks").status_code == 200
+    assert login("staff1").get("/restocks").status_code == 302
+    assert client.get("/restocks").status_code == 302
+
+
+def test_the_history_page_is_its_own_page(admin):
+    html = admin.get("/restocks").get_data(as_text=True)
+    assert 'id="restock-list"' in html and 'id="pager"' in html and 'id="save-restock"' not in html

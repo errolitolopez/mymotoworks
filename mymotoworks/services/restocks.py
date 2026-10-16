@@ -1,5 +1,7 @@
 """Restock use cases: record a restock, list the history, void one."""
 
+import math
+
 from mymotoworks import config
 from mymotoworks.domain.restocks import clean_restock
 from mymotoworks.errors import ValidationError
@@ -50,3 +52,15 @@ class RestockService(Service):
             self.items.set_puhunan(item["id"], puhunan)
         self.commit()
         return {"restock": self._json(self.restocks.get(restock_id)), "duplicate": False}
+
+    DEFAULT_PER_PAGE = 20
+    MAX_PER_PAGE = 50
+
+    def list(self, page=1, per_page=DEFAULT_PER_PAGE):
+        """One page of the history, newest first, with each restock's lines."""
+        per_page = max(1, min(per_page, self.MAX_PER_PAGE))
+        total = self.restocks.count()
+        pages = max(1, math.ceil(total / per_page))
+        page = max(1, page)
+        rows = self.restocks.page(per_page, (page - 1) * per_page)
+        return {"restocks": [self._json(row) for row in rows], "page": page, "pages": pages, "total": total}
