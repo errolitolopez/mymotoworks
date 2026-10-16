@@ -1,6 +1,6 @@
 """Rules for stock adjustments and recounts: checking what the pages send."""
 
-from mymotoworks.domain.money import MAX_COUNT, is_whole_number
+from mymotoworks.domain.money import MAX_COUNT, check_count, is_whole_number
 from mymotoworks.domain.text import clean_text
 from mymotoworks.errors import ValidationError
 
@@ -68,3 +68,15 @@ def clean_adjustment(data):
     if reason == "other" and not note:
         raise ValidationError("Write a note when the reason is Other.")
     return {"reason": reason, "note": note, "client_ref": client_ref, "lines": lines}
+
+
+def _clean_count_line(line):
+    return {"item_id": _item_id(line), "counted": check_count(line.get("counted"), "Counted")}
+
+
+def clean_count(data):
+    """What the recount page sent, checked: {"note", "client_ref", "lines": [{"item_id", "counted"}]}.
+    `counted` is what is really on the shelf, 0 or more."""
+    lines = _lines(data, _clean_count_line)
+    note, client_ref = _note_and_ref(data)
+    return {"note": note, "client_ref": client_ref, "lines": lines}

@@ -30,7 +30,7 @@ mymotoworks/
   schema.sql            the tables
   domain/               rules with no Flask or SQL (accounts, items, money, text helpers)
   repositories/         all SQL, one class per kind of data; they never commit
-  services/             use cases (auth, accounts, items, item import, sales, restocks); they check roles and commit
+  services/             use cases (auth, accounts, items, item import, sales, restocks, stock); they check roles and commit
   seed.py               flask --app app seed: about 140 sample items (only when there are none)
   imports.py            reading the old spreadsheet, and the import-items command
   migrations.py         adds columns that older databases lack (runs on every start)
@@ -81,6 +81,22 @@ with the right status, with nothing saved.
   cost is put back unless the cost was changed since (another restock, or an edit). The record stays,
   crossed out. Restocks are never deleted.
 - Cash tracking is postponed, so a restock makes no cash-out.
+
+## Stock corrections (admin)
+
+All under the **Stock** menu on the Items page.
+
+- **Adjust stock** (an item's ⋮ menu): take out or add a number of pieces, with a reason (lost,
+  missing, damaged, count correction, other; "other" needs a note). The form shows "Stock 5 → 3"
+  before you save.
+- **Count stock**: the list of items that count stock, each with a "Counted" box. Type what is on the
+  shelf; saving sets the stock of each counted item to that number. Items left empty are not touched,
+  and an item whose count equals its stock makes no record. The change is worked out at the moment of
+  saving, so a sale approved while you count does not spoil it.
+- **Stock changes**: every adjustment and recount, newest first, with the stock before and after, the
+  reason, the note, who and when. An item's ⋮ menu opens it filtered to that item.
+- Nothing is edited or deleted. A mistake is fixed with another adjustment the other way round. A
+  double tap on Save changes the stock once.
 
 ## Loading the old spreadsheet
 

@@ -38,3 +38,18 @@ def api_list():
         page=args.get("page", 1, type=int),
         per_page=args.get("per_page", StockService.DEFAULT_PER_PAGE, type=int),
     ))
+
+
+@bp.get("/stock-count")
+@role_required_page("admin")
+def count_page():
+    return render_template("stock_count.html", user=current_user())
+
+
+@bp.post("/api/stock-counts")
+@role_required_api("admin")
+def api_count():
+    """Body: {note?, client_ref?, lines: [{item_id, counted}]}. Sets each counted item's stock to the
+    counted number. 201 when something changed, 200 when nothing changed or it was already saved."""
+    result = service().count(json_body())
+    return jsonify(result), 201 if result["changed"] and not result["duplicate"] else 200

@@ -204,3 +204,114 @@ def test_the_history_page_and_the_menus_link_to_it(admin):
     html = admin.get("/stock-history").get_data(as_text=True)
     assert 'id="adjustment-list"' in html and 'id="pager"' in html
     assert 'href="/stock-history"' in admin.get("/items").get_data(as_text=True)
+
+
+def count(client, lines, **extra):
+    return client.post("/api/stock-counts", json={"lines": lines, **extra})
+
+
+def test_a_recount_sets_the_stock_to_what_was_counted(admin):
+    first, second = make_item(admin, stock=10), make_item(admin, name="SPARK PLUG", stock=4)
+    response = count(admin, [{"item_id": first["id"], "counted": 7}, {"item_id": second["id"], "counted": 9}],
+                     note="October shelf count")
+    assert response.status_code == 201, response.get_json()
+    data = response.get_json()
+    assert data["changed"] == 2 and data["unchanged"] == 0 and data["duplicate"] is False
+    batch = data["batch"]
+    assert batch["kind"] == "recount" and batch["reason"] == "count_correction" and batch["note"] == "October shelf count"
+    changes = {line["item_id"]: line for line in batch["adjustments"]}
+    assert changes[first["id"]]["change"] == -3 and changes[first["id"]]["stock_before"] == 10
+    assert changes[second["id"]]["change"] == 5 and changes[second["id"]]["stock_after"] == 9
+    assert item_row(admin, first)["stock"] == 7 and item_row(admin, second)["stock"] == 9
+
+
+def test_an_item_whose_count_equals_its_stock_makes_no_record(admin):
+    same, different = make_item(admin, stock=5), make_item(admin, name="SPARK PLUG", stock=5)
+    data = count(admin, [{"item_id": same["id"], "counted": 5}, {"item_id": different["id"], "counted": 3}]).get_json()
+    assert data["changed"] == 1 and data["unchanged"] == 1
+    assert [line["item_id"] for line in data["batch"]["adjustments"]] == [different["id"]]
+    assert count_rows("stock_adjustments") == 1
+
+
+def test_a_recount_where_nothing_changed_makes_no_batch(admin):
+    item = make_item(admin, stock=5)
+    response = count(admin, [{"item_id": item["id"], "counted": 5}])
+    assert response.status_code == 200
+    assert response.get_json() == {"batch": None, "changed": 0, "unchanged": 1, "duplicate": False}
+    assert count_rows("stock_batches") == 0
+
+
+def test_a_counted_zero_and_a_negative_stock_both_work(admin):
+    from conftest import db_execute
+    low, negative = make_item(admin, stock=4), make_item(admin, name="SPARK PLUG", stock=0)
+    db_execute("UPDATE items SET stock = -2 WHERE id = ?", (negative["id"],))  # sold more than was counted
+    count(admin, [{"item_id": low["id"], "counted": 0}, {"item_id": negative["id"], "counted": 3}])
+    assert item_row(admin, low)["stock"] == 0 and item_row(admin, negative)["stock"] == 3
+
+
+def test_the_stock_ends_at_the_counted_number_even_if_it_changed_while_counting(admin):
+    item = make_item(admin, stock=10)
+    # The page showed 10. A sale is approved while the owner counts the shelf.
+    sale = admin.post("/api/sales", json={"lines": [{"item_id": item["id"], "qty": 2}]}).get_json()["sale"]
+    admin.post(f"/api/sales/{sale['id']}/approve")
+    assert item_row(admin, item)["stock"] == 8
+    data = count(admin, [{"item_id": item["id"], "counted": 9}]).get_json()
+    assert item_row(admin, item)["stock"] == 9
+    line = data["batch"]["adjustments"][0]
+    assert line["stock_before"] == 8 and line["change"] == 1 and line["stock_after"] == 9
+
+
+def test_a_double_tap_with_the_same_reference_counts_once(admin):
+    item = make_item(admin, stock=10)
+    line = [{"item_id": item["id"], "counted": 6}]
+    first = count(admin, line, client_ref="c-1")
+    second = count(admin, line, client_ref="c-1")
+    assert first.status_code == 201 and second.status_code == 200 and second.get_json()["duplicate"] is True
+    assert second.get_json()["batch"]["id"] == first.get_json()["batch"]["id"]
+    assert item_row(admin, item)["stock"] == 6 and count_rows("stock_adjustments") == 1
+
+
+def test_a_bad_line_in_a_recount_changes_nothing(admin):
+    good = make_item(admin, stock=10)
+    loose = make_item(admin, name="LINIS", track_stock=False)
+    for bad, message in (({"item_id": 9999, "counted": 1}, "An item in the list does not exist."),
+                         ({"item_id": loose["id"], "counted": 1}, "LINIS does not count stock.")):
+        response = count(admin, [{"item_id": good["id"], "counted": 1}, bad])
+        assert response.status_code == 400 and response.get_json()["error"] == message
+    assert item_row(admin, good)["stock"] == 10 and count_rows("stock_batches") == 0
+
+
+def test_recount_rules(admin):
+    item = make_item(admin, stock=5)
+    ok = {"item_id": item["id"], "counted": 3}
+    counted = "Counted must be a whole number from 0 to 1000000."
+    cases = [
+        ({"lines": []}, "Add at least one item."),
+        ({"lines": [{**ok, "counted": -1}]}, counted),
+        ({"lines": [{**ok, "counted": 1.5}]}, counted),
+        ({"lines": [{**ok, "counted": "3"}]}, counted),
+        ({"lines": [{**ok, "counted": True}]}, counted),
+        ({"lines": [{**ok, "counted": None}]}, counted),
+        ({"lines": [{**ok, "counted": 1_000_001}]}, counted),
+        ({"lines": [ok, ok]}, "An item is listed twice."),
+        ({"lines": [{"counted": 1}]}, "An item in the list does not exist."),
+        ({"lines": [ok], "note": "x" * 201}, "Note can be at most 200 characters."),
+        ({"lines": [ok], "client_ref": 5}, "That reference is not valid."),
+    ]
+    for body, message in cases:
+        response = admin.post("/api/stock-counts", json=body)
+        assert response.status_code == 400 and response.get_json()["error"] == message, body
+    assert item_row(admin, item)["stock"] == 5 and count_rows("stock_batches") == 0
+    assert admin.post("/api/stock-counts").status_code == 400
+
+
+def test_staff_cannot_recount_and_the_page_is_for_the_admin(admin, client):
+    item = make_item(admin, stock=5)
+    assert count(login("staff1"), [{"item_id": item["id"], "counted": 1}]).status_code == 403
+    assert count(client, []).status_code == 401
+    assert item_row(admin, item)["stock"] == 5
+    html = admin.get("/stock-count").get_data(as_text=True)
+    for element in ('id="item-filter"', 'id="item-list"', 'id="save-count"', 'id="count-note"', 'id="count-summary"'):
+        assert element in html, element
+    assert login("staff1").get("/stock-count").status_code == 302
+    assert 'href="/stock-count"' in admin.get("/items").get_data(as_text=True)

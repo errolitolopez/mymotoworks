@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Count stock · mymotoworks{% endblock %}
+
+{% block content %}
+{% include "_navbar.html" %}
+<main class="container py-4" id="count-main">
+  <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0">Count stock</h1>
+    <a href="{{ url_for('stock.history_page') }}" class="btn btn-outline-secondary bi bi-journal-text"> Changes</a>
+  </div>
+  <p class="text-body-secondary">Count the shelf, then type the number you counted next to each item. Items you leave empty are not touched. When you save, the stock of each counted item becomes your number.</p>
+
+  <div id="count-message" class="alert alert-success d-none" role="status"></div>
+
+  <input id="item-filter" type="search" class="form-control mb-2" placeholder="Type to filter the list"
+         aria-label="Filter the item list by name, model or part no." autocomplete="off">
+  <div id="load-error" class="alert alert-danger py-2 d-none" role="alert"></div>
+  <p id="items-status" class="text-body-secondary text-center py-3 mb-0">Loading items...</p>
+  <p id="items-count" class="small text-body-secondary mb-1"></p>
+  <div id="item-scroll" class="item-scroll border rounded-3">
+    <div id="item-list" class="list-group list-group-flush"></div>
+  </div>
+  <p id="items-empty" class="text-body-secondary text-center py-3 d-none">No item matches.</p>
+
+  <div class="card mt-3">
+    <div class="card-body">
+      <p id="count-summary" class="fw-semibold mb-2">Nothing counted yet.</p>
+      <label for="count-note" class="form-label">Note <span class="text-body-secondary">(optional, like "October shelf count")</span></label>
+      <input id="count-note" type="text" class="form-control" maxlength="200" autocomplete="off">
+      <div id="count-error" class="alert alert-danger py-2 mt-3 mb-0 d-none" role="alert"></div>
+      <button id="save-count" type="button" class="btn btn-primary btn-lg w-100 mt-3 bi bi-check-lg" disabled> Save count</button>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/stock-count.js') }}"></script>
+{% endblock %}
