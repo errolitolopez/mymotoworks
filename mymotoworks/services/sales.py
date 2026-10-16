@@ -52,16 +52,12 @@ class SaleService(Service):
             priced.append((item, line["qty"], benta))
             total += line["qty"] * benta
 
-        # The admin's own sale is approved at once. A staff sale waits, and does not touch the stock
-        # until the admin approves it.
-        admin = self.user["role"] == "admin"
+        # Every sale, the admin's too, waits for approval and does not touch the stock until the admin
+        # approves it.
         sale_id = self.sales.create(request["sale_date"], self.user["id"], total, request["client_ref"],
-                                    request["note"], old["id"] if old else None,
-                                    self.user["id"] if admin else None)
+                                    request["note"], old["id"] if old else None)
         for item, qty, benta in priced:
             self.sales.add_line(sale_id, item, qty, benta)
-            if admin and item["track_stock"]:
-                self.items.change_stock(item["id"], -qty)
         if old:
             self._cancel(old, f"Replaced by sale #{sale_id}")
         self.commit()

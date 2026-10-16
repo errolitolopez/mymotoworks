@@ -310,10 +310,9 @@ saveButton.addEventListener("click", async () => {
       return;
     }
     const message = document.getElementById("sale-message");
+    // A sale waits for the admin's approval and does not touch the stock until then.
     message.textContent = `Sale #${data.sale.id} saved: ₱${pesos(data.sale.total)}.` +
-      (replacing ? ` Sale #${replaceable.id} was voided.` : "") +
-      // A staff sale waits for the admin and does not touch the stock yet.
-      (data.sale.status === "pending" ? " It will count after the admin approves it." : "");
+      (replacing ? ` Sale #${replaceable.id} was voided.` : "") + " It counts after it is approved.";
     message.classList.remove("d-none");
     cart = [];
     clearCopy();

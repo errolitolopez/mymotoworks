@@ -49,10 +49,11 @@ with the right status, with nothing saved.
 - **Sell** (staff land here after login): search an item, tap it into the cart, change the quantity
   or the price of a line, save. A sale may take stock below 0 (the cart warns); wrong counts are
   fixed with stock adjustments later.
-- **Approval**: a sale saved by staff is **pending**. It does not touch the stock and is not in the
-  day's total or tubo (the Sales page shows it apart). The admin approves it (one by one, or
-  "Approve all" for the day) and only then the stock goes down and the sale counts. The admin's own
-  sales are approved at once. Rejecting a pending sale takes no stock back, because none was taken.
+- **Approval**: every sale, the admin's too, is **pending** when it is saved. It does not touch the
+  stock and is not in the day's total or tubo (the Sales page shows it apart). The admin approves it
+  (one by one, or "Approve all" for the day) and only then the stock goes down and the sale counts.
+  Rejecting a pending sale takes no stock back, because none was taken. A sale that replaces another
+  is pending too: the old one is voided at once, the new one counts after it is approved.
   The admin's Home page says how many sales wait for approval.
 - Each sale can have an optional **note** (up to 100 characters, for example the customer's name). It
   is saved with the sale and shown under the sale number on the Sales page.

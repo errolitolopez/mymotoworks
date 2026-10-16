@@ -11,13 +11,12 @@ SALE_COLUMNS = (
 
 
 class SaleRepository(Repository):
-    def create(self, sale_date, user_id, total, client_ref, note="", replaces_sale_id=None, approved_by=None):
-        """Add a sale. `approved_by` is the admin's id when the sale is approved at once, or None when
-        it waits for approval."""
+    def create(self, sale_date, user_id, total, client_ref, note="", replaces_sale_id=None):
+        """Add a sale. It waits for approval: approved_at stays empty until mark_approved."""
         cursor = self.execute(
-            "INSERT INTO sales (sale_date, user_id, total, client_ref, note, replaces_sale_id, approved_by, "
-            "approved_at) VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? IS NULL THEN NULL ELSE CURRENT_TIMESTAMP END)",
-            (sale_date, user_id, total, client_ref, note, replaces_sale_id, approved_by, approved_by),
+            "INSERT INTO sales (sale_date, user_id, total, client_ref, note, replaces_sale_id) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (sale_date, user_id, total, client_ref, note, replaces_sale_id),
         )
         return cursor.lastrowid
 
