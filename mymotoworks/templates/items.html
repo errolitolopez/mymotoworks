@@ -9,7 +9,13 @@
     <h1 class="h4 mb-0">Items</h1>
     {% if user.role == "admin" %}
     <div class="d-flex gap-2">
-      <a href="{{ url_for('restocks.new_page') }}" class="btn btn-outline-secondary bi bi-box-arrow-in-down"> Restock</a>
+      <div class="dropdown" id="stock-menu">
+        <button class="btn btn-outline-secondary bi bi-boxes dropdown-toggle" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"> Stock</button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item bi bi-box-arrow-in-down" href="{{ url_for('restocks.new_page') }}"> Restock</a></li>
+        </ul>
+      </div>
       <button id="add-button" type="button" class="btn btn-primary bi bi-plus-lg"> Add item</button>
     </div>
     {% endif %}
@@ -53,7 +59,7 @@
   </div>
 </main>
 
-{% if user.role == "admin" %}{% include "_item_modal.html" %}{% endif %}
+{% if user.role == "admin" %}{% include "_item_modal.html" %}{% include "_adjust_modal.html" %}{% endif %}
 {% endblock %}
 
 {% block scripts %}

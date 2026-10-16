@@ -1,0 +1,46 @@
+<div class="modal fade" id="adjust-modal" tabindex="-1" aria-labelledby="adjust-modal-title" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
+    <form class="modal-content" id="adjust-form" novalidate>
+      <div class="modal-header">
+        <h2 class="modal-title fs-5" id="adjust-modal-title">Adjust stock</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p id="adjust-item" class="fw-semibold mb-1"></p>
+        <p id="adjust-now" class="text-body-secondary mb-3"></p>
+
+        <div class="btn-group w-100 mb-3" role="group" aria-label="Take out or add">
+          <input type="radio" class="btn-check" name="adjust-direction" id="adjust-out" value="out" checked>
+          <label class="btn btn-outline-danger bi bi-dash-lg" for="adjust-out"> Take out</label>
+          <input type="radio" class="btn-check" name="adjust-direction" id="adjust-in" value="in">
+          <label class="btn btn-outline-success bi bi-plus-lg" for="adjust-in"> Add</label>
+        </div>
+
+        <div class="mb-3">
+          <label for="adjust-qty" class="form-label">How many</label>
+          <input id="adjust-qty" type="text" inputmode="numeric" class="form-control" autocomplete="off" required>
+          <div id="adjust-preview" class="form-text"></div>
+        </div>
+        <div class="mb-3">
+          <label for="adjust-reason" class="form-label">Why</label>
+          <select id="adjust-reason" class="form-select">
+            <option value="lost">Lost</option>
+            <option value="missing">Missing</option>
+            <option value="damaged">Damaged</option>
+            <option value="count_correction">Count correction</option>
+            <option value="other">Other (write a note)</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="adjust-note" class="form-label">Note <span class="text-body-secondary">(optional, needed for Other)</span></label>
+          <input id="adjust-note" type="text" class="form-control" maxlength="200" autocomplete="off">
+        </div>
+        <div id="adjust-error" class="alert alert-danger py-2 mb-0 d-none" role="alert"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary bi bi-x-lg" data-bs-dismiss="modal"> Cancel</button>
+        <button id="adjust-save" type="submit" class="btn btn-primary bi bi-check-lg"> Save</button>
+      </div>
+    </form>
+  </div>
+</div>

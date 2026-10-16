@@ -105,3 +105,31 @@ CREATE TABLE IF NOT EXISTS restock_lines (
 );
 
 CREATE INDEX IF NOT EXISTS idx_restock_lines_restock ON restock_lines (restock_id);
+
+-- One save of stock changes: an adjustment (one or many items, one reason) or a recount. Never
+-- edited or deleted: a wrong one is fixed by another in the opposite direction.
+CREATE TABLE IF NOT EXISTS stock_batches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    kind TEXT NOT NULL CHECK (kind IN ('adjustment', 'recount')),
+    reason TEXT NOT NULL,
+    note TEXT NOT NULL DEFAULT '',
+    -- Made by the page for each save, so a double tap or a retry saves only once.
+    client_ref TEXT UNIQUE,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- One row per item changed. The name and the stock before and after are copied, so the history stays
+-- true whatever happens to the item later.
+CREATE TABLE IF NOT EXISTS stock_adjustments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    batch_id INTEGER NOT NULL REFERENCES stock_batches(id),
+    item_id INTEGER NOT NULL REFERENCES items(id),
+    item_name TEXT NOT NULL,
+    change INTEGER NOT NULL CHECK (change != 0),
+    stock_before INTEGER NOT NULL,
+    stock_after INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_stock_adjustments_item ON stock_adjustments (item_id);
+CREATE INDEX IF NOT EXISTS idx_stock_adjustments_batch ON stock_adjustments (batch_id);

@@ -23,6 +23,7 @@ const textLine = (text) => {
 
 // Set below, for the admin: opens the form to edit an item.
 let openFormForEdit = () => {};
+let openAdjust = () => {};
 
 // toggleActive(item, button) -> asks first when deactivating, then saves and reloads the list
 const toggleActive = async (item, button) => {
@@ -86,6 +87,7 @@ const itemRow = (item) => {
   row.append(info, numbers);
   if (isAdmin) {
     row.append(actionMenu([
+      ...(item.track_stock ? [{ icon: "bi-sliders", label: "Adjust stock", onClick: () => openAdjust(item) }] : []),
       { icon: "bi-pencil", label: "Edit", onClick: () => openFormForEdit(item) },
       { icon: item.active ? "bi-slash-circle" : "bi-check-circle", label: item.active ? "Deactivate" : "Activate",
         onClick: (trigger) => toggleActive(item, trigger) },
@@ -261,6 +263,82 @@ if (isAdmin) {
   });
 
   document.getElementById("add-button").addEventListener("click", () => openForm());
+
+  // --- Adjust stock: take out or add a number of pieces, with a reason ---
+  const adjustForm = document.getElementById("adjust-form");
+  const adjustQty = document.getElementById("adjust-qty");
+  const adjustReason = document.getElementById("adjust-reason");
+  const adjustNote = document.getElementById("adjust-note");
+  const adjustSave = document.getElementById("adjust-save");
+  const adjustModal = bootstrap.Modal.getOrCreateInstance(document.getElementById("adjust-modal"));
+  let adjustingItem = null;
+  let adjustRef = null; // one reference per open form, so a double tap or a retry saves only once
+
+  // adjustChange() -> -2 (take out 2), 3 (add 3), or null when the box is empty or not a whole number above 0
+  const adjustChange = () => {
+    const count = toCount(adjustQty.value);
+    if (count === null || count < 1 || adjustQty.value.trim() === "") return null;
+    return document.getElementById("adjust-in").checked ? count : -count;
+  };
+
+  // showPreview() -> "Stock 5 → 3" under the quantity box
+  const showPreview = () => {
+    const change = adjustChange();
+    document.getElementById("adjust-preview").textContent =
+      change === null ? "" : `Stock ${adjustingItem.stock} → ${adjustingItem.stock + change}`;
+  };
+  adjustQty.addEventListener("input", showPreview);
+  document.querySelectorAll("input[name='adjust-direction']").forEach((radio) => radio.addEventListener("change", showPreview));
+
+  openAdjust = (item) => {
+    adjustingItem = item;
+    adjustRef = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    document.getElementById("adjust-item").textContent = [item.name, item.model].filter(Boolean).join(" · ");
+    document.getElementById("adjust-now").textContent = `Stock now: ${item.stock}`;
+    document.getElementById("adjust-out").checked = true;
+    adjustQty.value = "";
+    adjustReason.value = "lost";
+    adjustNote.value = "";
+    document.getElementById("adjust-preview").textContent = "";
+    hideError("adjust-error");
+    adjustModal.show();
+  };
+
+  adjustForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    hideError("adjust-error");
+    const change = adjustChange();
+    if (change === null) {
+      showError("adjust-error", "Type how many, a whole number above 0.");
+      return;
+    }
+    const stopLoading = startLoading(adjustSave);
+    if (!stopLoading) return;
+    try {
+      const response = await apiFetch("/api/stock-adjustments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_ref: adjustRef,
+          reason: adjustReason.value,
+          note: adjustNote.value,
+          lines: [{ item_id: adjustingItem.id, change }],
+        }),
+      });
+      if (!response) return;
+      const data = await response.json();
+      if (!response.ok) {
+        showError("adjust-error", data.error || "Could not save the change.");
+        return;
+      }
+      adjustModal.hide();
+      loadItems();
+    } catch {
+      showError("adjust-error", "Cannot reach the server. Check your connection.");
+    } finally {
+      stopLoading();
+    }
+  });
   document.getElementById("show-inactive").addEventListener("change", reloadFromStart);
 }
 

@@ -3,6 +3,7 @@
 from mymotoworks.repositories.items import ItemRepository
 from mymotoworks.repositories.restocks import RestockRepository
 from mymotoworks.repositories.sales import SaleRepository
+from mymotoworks.repositories.stock import StockRepository
 from mymotoworks.repositories.users import UserRepository
 
-__all__ = ["ItemRepository", "RestockRepository", "SaleRepository", "UserRepository"]
+__all__ = ["ItemRepository", "RestockRepository", "SaleRepository", "StockRepository", "UserRepository"]

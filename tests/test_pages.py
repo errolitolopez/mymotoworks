@@ -92,3 +92,10 @@ def test_the_sell_list_is_a_flat_list_in_its_own_scroll_box(admin):
 def test_the_items_page_has_a_restock_button_for_the_admin_only(admin):
     assert 'href="/restock"' in page(admin, "/items")
     assert 'href="/restock"' not in page(login("staff1"), "/items")
+
+
+def test_the_items_page_has_a_stock_menu_for_the_admin_only(admin):
+    html = page(admin, "/items")
+    assert 'id="stock-menu"' in html and 'href="/restock"' in html and 'id="adjust-modal"' in html
+    staff_html = page(login("staff1"), "/items")
+    assert 'id="stock-menu"' not in staff_html and 'id="adjust-modal"' not in staff_html

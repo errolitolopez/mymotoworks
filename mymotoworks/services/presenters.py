@@ -1,6 +1,7 @@
 """Shape rows into the JSON the pages use. Never include password hashes."""
 
 from mymotoworks.config import shop_time_text
+from mymotoworks.domain.stock import REASONS
 
 
 def account_json(row):
@@ -99,4 +100,30 @@ def restock_json(restock, lines):
             "old_puhunan": line["old_puhunan"],
             "line_total": line["qty"] * line["puhunan"],
         } for line in lines],
+    }
+
+
+def adjustment_json(row):
+    """One item changed in a batch."""
+    return {
+        "id": row["id"],
+        "item_id": row["item_id"],
+        "name": row["item_name"],
+        "change": row["change"],
+        "stock_before": row["stock_before"],
+        "stock_after": row["stock_after"],
+    }
+
+
+def batch_json(batch, adjustments):
+    """A save of stock changes with the items it changed."""
+    return {
+        "id": batch["id"],
+        "kind": batch["kind"],
+        "reason": batch["reason"],
+        "reason_label": REASONS[batch["reason"]],
+        "note": batch["note"],
+        "recorded_by": batch["user_name"],
+        "recorded_at": shop_time_text(batch["created_at"]),
+        "adjustments": [adjustment_json(row) for row in adjustments],
     }
