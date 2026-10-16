@@ -21,6 +21,46 @@
   --page-gradient: radial-gradient(circle at top left, hsl(222 47% 15%), hsl(222 47% 11%));
 }
 
+/* One knob to scale the whole UI: Bootstrap sizes are in rem, so this shrinks text, buttons and
+   spacing together. */
+html {
+  font-size: 90%;
+}
+
+/* Bootstrap's headings and spacing utilities are generous; tighten the ones this app uses a lot. */
+h1,
+.h1 {
+  font-size: 1.5rem;
+}
+
+h2,
+.h2 {
+  font-size: 1.3rem;
+}
+
+.container {
+  --bs-gutter-x: 1rem;
+}
+
+/* !important: Bootstrap's spacing utilities are !important, so only !important beats them. */
+.py-4 {
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+}
+
+.p-4 {
+  padding: 1rem !important;
+}
+
+.card {
+  --bs-card-spacer-y: 0.75rem;
+  --bs-card-spacer-x: 0.75rem;
+}
+
+.modal {
+  --bs-modal-padding: 1rem;
+}
+
 body {
   background-color: var(--page-base);
   background-image: var(--page-gradient);
@@ -67,6 +107,43 @@ body {
   transition: none !important;
 }
 
+/* Small buttons on every screen size. About 32px high on phones is still easy to tap. Bootstrap's
+   own variables, not new selectors. btn-lg is the same size as btn-sm plus a little, so the big
+   Save buttons stop dominating the page. */
+.btn {
+  --bs-btn-padding-y: 0.2rem;
+  --bs-btn-padding-x: 0.55rem;
+  --bs-btn-font-size: 0.75rem;
+  --bs-btn-border-radius: 0.5rem;
+}
+
+.btn-sm {
+  --bs-btn-padding-y: 0.12rem;
+  --bs-btn-padding-x: 0.4rem;
+  --bs-btn-font-size: 0.6875rem;
+}
+
+.btn-lg {
+  --bs-btn-padding-y: 0.3rem;
+  --bs-btn-padding-x: 0.7rem;
+  --bs-btn-font-size: 0.8125rem;
+  --bs-btn-border-radius: 0.5rem;
+}
+
+@media (max-width: 767.98px) {
+  .btn {
+    min-height: 1.75rem;
+  }
+
+  .btn-sm {
+    min-height: 1.5rem;
+  }
+
+  .btn-lg {
+    min-height: 2rem;
+  }
+}
+
 /* ---- Mobile first: the phone layout is the base; wider screens add to it ---- */
 
 .min-w-0 {
@@ -96,14 +173,14 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.1rem;
-  min-height: 3.5rem;
+  min-height: 3rem;
   color: var(--bs-secondary-color);
   text-decoration: none;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
 }
 
 .tab-link .bi {
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   line-height: 1;
 }
 
@@ -115,39 +192,32 @@ body {
 @media (max-width: 767.98px) {
   /* Room for the bar, so the last row of a page is never hidden behind it. */
   body:has(.tabbar) {
-    padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
-  }
-
-  /* Thumb-sized targets (about 44px). Bootstrap's own variables, not new selectors. */
-  .btn {
-    --bs-btn-padding-y: 0.6rem;
-    --bs-btn-padding-x: 1rem;
-    min-height: 2.75rem;
-  }
-
-  .btn-sm {
-    --bs-btn-padding-y: 0.5rem;
-    --bs-btn-padding-x: 0.75rem;
-    --bs-btn-font-size: 0.9rem;
+    padding-bottom: calc(3rem + env(safe-area-inset-bottom));
   }
 
   .form-control,
   .form-select {
-    min-height: 2.75rem;
+    min-height: 2.25rem;
+    font-size: 0.875rem;
+  }
+
+  .form-control-lg {
+    min-height: 2.5rem;
+    font-size: 1rem;
   }
 
   .dropdown-item {
-    padding-top: 0.7rem;
-    padding-bottom: 0.7rem;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
   }
 
   .form-check-input {
-    width: 1.4em;
-    height: 1.4em;
+    width: 1.2em;
+    height: 1.2em;
   }
 
   .form-switch .form-check-input {
-    width: 2.5em;
+    width: 2.1em;
   }
 }
 
@@ -173,4 +243,18 @@ body {
     max-height: 70vh;
     max-height: 70dvh;
   }
+}
+
+/* The cart table scrolls inside its own box, like the item list, so 20 lines do not push Total and
+   Save sale off the screen. The sticky header keeps the column names in view. */
+.cart-scroll {
+  max-height: 45vh;
+  max-height: 45dvh;
+  overflow-y: auto;
+}
+
+.cart-scroll thead th {
+  position: sticky;
+  top: 0;
+  background-color: var(--glass-solid);
 }

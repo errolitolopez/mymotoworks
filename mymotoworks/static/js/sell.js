@@ -13,6 +13,7 @@ const tabCart = document.getElementById("tab-cart");
 const panelItems = document.getElementById("panel-items");
 const panelCart = document.getElementById("panel-cart");
 const cartBox = document.getElementById("cart-lines");
+const cartTableWrap = document.getElementById("cart-table-wrap");
 const cartEmpty = document.getElementById("cart-empty");
 const totalBox = document.getElementById("cart-total");
 const saveButton = document.getElementById("save-sale");
@@ -71,6 +72,7 @@ const updateTotals = () => {
   tabCart.textContent = cart.length === 0 ? "Cart" : `Cart (${cartCount()}) ₱${pesos(cartTotal())}`;
   saveButton.disabled = cart.length === 0;
   cartEmpty.classList.toggle("d-none", cart.length > 0);
+  cartTableWrap.classList.toggle("d-none", cart.length === 0);
   cart.forEach((line) => {
     line.totalBox.textContent = `₱${pesos(lineTotal(line))}`;
     line.warningBox.textContent = stockWarning(line);
@@ -78,40 +80,33 @@ const updateTotals = () => {
   });
 };
 
-// stepButton("bi-dash-lg", "Less", handler) -> a square button for the quantity
+// stepButton("bi-dash-lg", "Less", handler) -> a small square button for the quantity
 const stepButton = (icon, label, onClick) => {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = `btn btn-outline-secondary bi ${icon}`;
+  button.className = `btn btn-sm btn-outline-secondary bi ${icon}`;
   button.setAttribute("aria-label", label);
   button.addEventListener("click", onClick);
   return button;
 };
 
-// cartRow(line) -> the elements of one cart line (name, quantity, price, total, remove)
+// cartRow(line) -> one table row of the cart: name, quantity, price, total and remove
 const cartRow = (line) => {
-  const row = document.createElement("div");
-  row.className = "border rounded-3 p-2";
+  const row = document.createElement("tr");
 
-  const top = document.createElement("div");
-  top.className = "d-flex justify-content-between align-items-start gap-2";
-  const name = document.createElement("div");
-  name.className = "fw-semibold text-break min-w-0";
-  name.textContent = [line.item.name, line.item.model].filter(Boolean).join(" · ");
-  const remove = stepButton("bi-x-lg", `Remove ${line.item.name}`, () => {
-    cart = cart.filter((other) => other !== line);
-    renderCart();
-  });
-  remove.classList.add("flex-shrink-0");
-  top.append(name, remove);
+  const nameCell = document.createElement("td");
+  nameCell.className = "text-break";
+  nameCell.textContent = [line.item.name, line.item.model].filter(Boolean).join(" · ");
+  const warning = document.createElement("div");
+  warning.className = "small text-warning-emphasis d-none";
+  nameCell.append(warning);
 
-  const controls = document.createElement("div");
-  controls.className = "d-flex align-items-center gap-2 mt-2";
+  const qtyCell = document.createElement("td");
   const qtyInput = document.createElement("input");
   qtyInput.type = "text";
   qtyInput.inputMode = "numeric";
-  qtyInput.className = "form-control text-center";
-  qtyInput.style.maxWidth = "4.5rem";
+  qtyInput.className = "form-control form-control-sm text-center";
+  qtyInput.style.width = "3.25rem";
   qtyInput.setAttribute("aria-label", `Quantity of ${line.item.name}`);
   qtyInput.value = String(line.qty);
   qtyInput.addEventListener("input", () => {
@@ -119,45 +114,48 @@ const cartRow = (line) => {
     line.qty = count === null ? NaN : count;
     updateTotals();
   });
+  // The − and + change the quantity by one; the box is still there for typing a bigger number.
   const setQty = (next) => {
     line.qty = Math.max(1, next);
     qtyInput.value = String(line.qty);
     updateTotals();
   };
-  const priceGroup = document.createElement("div");
-  priceGroup.className = "input-group";
-  const peso = document.createElement("span");
-  peso.className = "input-group-text";
-  peso.textContent = "₱";
+  const qtyGroup = document.createElement("div");
+  qtyGroup.className = "d-flex align-items-center gap-1";
+  qtyGroup.append(
+    stepButton("bi-dash-lg", "Less", () => setQty((Number.isInteger(line.qty) ? line.qty : 1) - 1)),
+    qtyInput,
+    stepButton("bi-plus-lg", "More", () => setQty((Number.isInteger(line.qty) ? line.qty : 0) + 1)),
+  );
+  qtyCell.append(qtyGroup);
+
+  const priceCell = document.createElement("td");
   const priceInput = document.createElement("input");
   priceInput.type = "text";
   priceInput.inputMode = "decimal";
-  priceInput.className = "form-control";
+  priceInput.className = "form-control form-control-sm";
+  priceInput.style.width = "5rem";
   priceInput.setAttribute("aria-label", `Price of ${line.item.name}`);
   priceInput.value = pesos(line.price).replaceAll(",", "");
   priceInput.addEventListener("input", () => {
     line.price = priceInput.value.trim() === "" ? null : toCentavos(priceInput.value);
     updateTotals();
   });
-  priceGroup.append(peso, priceInput);
-  controls.append(
-    stepButton("bi-dash-lg", "Less", () => setQty((Number.isInteger(line.qty) ? line.qty : 1) - 1)),
-    qtyInput,
-    stepButton("bi-plus-lg", "More", () => setQty((Number.isInteger(line.qty) ? line.qty : 0) + 1)),
-    priceGroup,
-  );
+  priceCell.append(priceInput);
 
-  const bottom = document.createElement("div");
-  bottom.className = "d-flex justify-content-between align-items-center mt-2";
-  const warning = document.createElement("div");
-  warning.className = "small text-warning-emphasis d-none";
-  const total = document.createElement("div");
-  total.className = "fw-semibold ms-auto";
-  bottom.append(warning, total);
+  const totalCell = document.createElement("td");
+  totalCell.className = "text-end fw-semibold text-nowrap";
+
+  const removeCell = document.createElement("td");
+  removeCell.className = "text-end";
+  removeCell.append(stepButton("bi-x-lg", `Remove ${line.item.name}`, () => {
+    cart = cart.filter((other) => other !== line);
+    renderCart();
+  }));
 
   line.warningBox = warning;
-  line.totalBox = total;
-  row.append(top, controls, bottom);
+  line.totalBox = totalCell;
+  row.append(nameCell, qtyCell, priceCell, totalCell, removeCell);
   return row;
 };
 
