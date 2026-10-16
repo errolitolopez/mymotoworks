@@ -7,6 +7,7 @@ import os
 import sqlite3
 import tempfile
 
+import openpyxl
 import pytest
 from werkzeug.security import generate_password_hash
 
@@ -116,3 +117,23 @@ def add_items(count):
             [(f"ITEM {number:03d}",) for number in range(1, count + 1)],
         )
         db.commit()
+
+
+INVENTORY_HEADINGS = ["ITEM NAME", "MODEL", "PART NO.", "PUHUNAN", "BENTA", "STOCK", "TOTAL CAPITAL",
+                      "RE-ORDER", "REMAINING STOCK", "9/21/26 stock", 46256, 46259]
+
+
+def make_workbook(path, rows, headings=None, sheet="STOCK INVENTORY"):
+    """A small Excel file shaped like the shop's STOCK INVENTORY sheet: headings in row 1, a blank
+    row 2, then the given rows (name, model, part no., puhunan, benta, remaining stock) from row 3.
+    Returns the path as text."""
+    workbook = openpyxl.Workbook()
+    worksheet = workbook.active
+    worksheet.title = sheet
+    worksheet.append(headings or INVENTORY_HEADINGS)
+    worksheet.append([])
+    for name, model, part_no, puhunan, benta, remaining in rows:
+        # Columns A-F, then G/H/I/J: only I (REMAINING STOCK) matters; H (RE-ORDER) must be ignored.
+        worksheet.append([name, model, part_no, puhunan, benta, 99, None, 7, remaining, None])
+    workbook.save(path)
+    return str(path)

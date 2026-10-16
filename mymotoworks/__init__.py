@@ -9,7 +9,7 @@ Layers (each only uses the ones below it):
 
 from flask import Flask
 
-from mymotoworks import config, database, seed
+from mymotoworks import config, database, imports, seed
 from mymotoworks.errors import register_error_handlers
 from mymotoworks.services import LoginThrottle
 from mymotoworks.web import BLUEPRINTS
@@ -21,6 +21,7 @@ def create_app(test_config=None):
 
     database.init_app(app)
     app.cli.add_command(seed.seed_command)
+    app.cli.add_command(imports.import_items_command)
     register_error_handlers(app)
     app.extensions["login_throttle"] = LoginThrottle()
     for blueprint in BLUEPRINTS:
