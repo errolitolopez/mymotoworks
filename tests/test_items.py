@@ -252,3 +252,29 @@ def test_staff_cannot_edit(admin):
     staff = login("staff1")
     assert staff.put(f"/api/items/{item['id']}", json={"benta": 1}).status_code == 403
     assert items(admin.get("/api/items"))[0]["benta"] == 15000
+
+
+def test_the_sell_page_gets_every_active_item_in_one_answer(admin):
+    add_items(150)
+    make_item(admin, name="AAA FIRST")
+    gone = make_item(admin, name="ZZZ GONE")
+    admin.put(f"/api/items/{gone['id']}", json={"active": False})
+    response = login("staff1").get("/api/items/all")
+    assert response.status_code == 200
+    rows = response.get_json()["items"]
+    assert len(rows) == 151                              # not cut at a page, and without the deactivated one
+    assert rows[0]["name"] == "AAA FIRST" and rows[-1]["name"] == "ITEM 150"
+    assert "ZZZ GONE" not in response.get_data(as_text=True)
+    assert "puhunan" not in response.get_data(as_text=True)
+
+
+def test_items_all_orders_by_name_then_model(admin):
+    make_item(admin, name="BULB", model="T10")
+    make_item(admin, name="BULB", model="H4")
+    make_item(admin, name="AIR FILTER", model="NMAX")
+    assert [(row["name"], row["model"]) for row in items(admin.get("/api/items/all"))] == [
+        ("AIR FILTER", "NMAX"), ("BULB", "H4"), ("BULB", "T10")]
+
+
+def test_items_all_needs_login(client):
+    assert client.get("/api/items/all").status_code == 401

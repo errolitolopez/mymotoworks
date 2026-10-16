@@ -15,6 +15,8 @@ class ItemService(Service):
         super().__init__(db, user)
         self.items = ItemRepository(db)
 
+    # The shop has a few hundred items. This is a safety limit, so one answer can never grow without end.
+    MAX_ALL = 5000
     DEFAULT_PER_PAGE = 50
     MAX_PER_PAGE = 100
 
@@ -31,6 +33,12 @@ class ItemService(Service):
             "items": [item_json(row, self.user["role"]) for row in rows],
             "page": page, "pages": pages, "total": total,
         }
+
+    def list_all_active(self):
+        """Every active item in one answer, for the Sell page (it shows the whole list and filters it
+        in the page). Cost and profit are left out for staff, as everywhere."""
+        rows = self.items.search(limit=self.MAX_ALL)
+        return {"items": [item_json(row, self.user["role"]) for row in rows]}
 
     def create(self, data):
         """Add an item. Returns its JSON."""

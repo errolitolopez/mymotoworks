@@ -71,3 +71,11 @@ def test_staff_filter_panel_has_low_stock_but_no_deactivated_switch():
 
 def test_items_search_and_filter_do_not_float(admin):
     assert "sticky" not in page(admin, "/items")
+
+
+def test_the_sell_page_shows_the_item_list_with_a_filter_and_two_tabs(admin):
+    html = page(login("staff1"), "/sell")
+    for element in ('id="item-filter"', 'id="item-list"', 'id="tab-items"', 'id="tab-cart"', 'id="panel-items"',
+                    'id="panel-cart"'):
+        assert element in html, element
+    assert 'id="results"' not in html  # the old search-first results box is gone

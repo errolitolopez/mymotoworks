@@ -36,6 +36,13 @@ def api_list():
     ))
 
 
+@bp.get("/api/items/all")
+@login_required_api
+def api_all():
+    """Every active item, by name. For the Sell page."""
+    return jsonify(service().list_all_active())
+
+
 @bp.post("/api/items")
 @role_required_api("admin")
 def api_create():

@@ -1,12 +1,15 @@
 // The Sell page: search items, build a cart, save the sale.
 
-const SEARCH_DELAY_MS = 300;
-const RESULT_LIMIT = 8;
+const MAX_FILTER_WORDS = 6;
 
-const searchInput = document.getElementById("item-search");
-const resultsBox = document.getElementById("results");
-const resultsEmpty = document.getElementById("results-empty");
-const resultsHint = document.getElementById("results-hint");
+const filterInput = document.getElementById("item-filter");
+const itemListBox = document.getElementById("item-list");
+const itemsStatus = document.getElementById("items-status");
+const itemsEmpty = document.getElementById("items-empty");
+const tabItems = document.getElementById("tab-items");
+const tabCart = document.getElementById("tab-cart");
+const panelItems = document.getElementById("panel-items");
+const panelCart = document.getElementById("panel-cart");
 const cartBox = document.getElementById("cart-lines");
 const cartEmpty = document.getElementById("cart-empty");
 const totalBox = document.getElementById("cart-total");
@@ -17,6 +20,9 @@ const copyBanner = document.getElementById("copy-banner");
 const replaceBox = document.getElementById("replace-box"); // only the admin has it
 const replaceCheck = document.getElementById("replace-check");
 const today = document.getElementById("sell-main").dataset.today;
+
+// Every active item, loaded once. The list is filtered here, so typing never waits for the server.
+let allItems = [];
 
 // Each line: {item, qty, price} where price is centavos (the item's own price unless changed).
 let cart = [];
@@ -37,6 +43,13 @@ const lineTotal = (line) => (Number.isInteger(line.qty) && line.price !== null ?
 
 const cartTotal = () => cart.reduce((sum, line) => sum + lineTotal(line), 0);
 
+// cartCount() -> 5 (all the pieces in the cart; a quantity that is not a number counts as 0)
+const cartCount = () => cart.reduce((sum, line) => sum + (Number.isInteger(line.qty) ? line.qty : 0), 0);
+
+// inCart(item) -> 2 (how many of this item are in the cart, at any price)
+const inCart = (item) =>
+  cart.filter((line) => line.item.id === item.id).reduce((sum, line) => sum + (Number.isInteger(line.qty) ? line.qty : 0), 0);
+
 // stockWarning({item: {track_stock: true, stock: 2}, qty: 3}) -> "Only 2 in stock. ..." ("" when fine)
 const stockWarning = (line) =>
   line.item.track_stock && line.qty > line.item.stock
@@ -53,6 +66,7 @@ const cartProblem = () => {
 
 const updateTotals = () => {
   totalBox.textContent = `₱${pesos(cartTotal())}`;
+  tabCart.textContent = cart.length === 0 ? "Cart" : `Cart (${cartCount()}) ₱${pesos(cartTotal())}`;
   saveButton.disabled = cart.length === 0;
   cartEmpty.classList.toggle("d-none", cart.length > 0);
   cart.forEach((line) => {
@@ -148,6 +162,7 @@ const cartRow = (line) => {
 const renderCart = () => {
   cartBox.replaceChildren(...cart.map(cartRow));
   updateTotals();
+  renderList(); // the items in the cart show a "×2" mark
 };
 
 // addToCart(item) -> adds one of the item, or one more when it is already there at its own price
@@ -162,13 +177,36 @@ const addToCart = (item) => {
   renderCart();
 };
 
-// resultRow(item) -> a tappable row in the search results
-const resultRow = (item) => {
+// showTab("cart") -> on a phone, shows the cart instead of the item list ("items" does the reverse).
+// From 768px both are always visible (d-md-block), so the tabs only matter on small screens.
+const showTab = (name) => {
+  const cartTab = name === "cart";
+  panelItems.classList.toggle("d-none", cartTab);
+  panelCart.classList.toggle("d-none", !cartTab);
+  tabItems.classList.toggle("active", !cartTab);
+  tabCart.classList.toggle("active", cartTab);
+  tabItems.setAttribute("aria-selected", String(!cartTab));
+  tabCart.setAttribute("aria-selected", String(cartTab));
+};
+tabItems.addEventListener("click", () => showTab("items"));
+tabCart.addEventListener("click", () => showTab("cart"));
+
+// filterWords() -> ["air", "nmax"] from the filter box: every word must be in the item's text
+const filterWords = () => filterInput.value.toLowerCase().split(/\s+/).filter(Boolean).slice(0, MAX_FILTER_WORDS);
+
+// matches(item, ["air", "nmax"]) -> true for "AIR FILTER SUNTAL · NMAX V1" (any order, any case)
+const matches = (item, words) => {
+  const text = `${item.name} ${item.model} ${item.part_no}`.toLowerCase();
+  return words.every((word) => text.includes(word));
+};
+
+// itemRow(item) -> one tappable row of the list: name, model, price, stock, and a "×2" mark when in the cart
+const itemRow = (item) => {
   const row = document.createElement("button");
   row.type = "button";
-  row.className = "list-group-item list-group-item-action d-flex justify-content-between align-items-start gap-2";
+  row.className = "list-group-item list-group-item-action d-flex align-items-center gap-2";
   const info = document.createElement("div");
-  info.className = "min-w-0 text-start";
+  info.className = "min-w-0 text-start flex-grow-1";
   const name = document.createElement("div");
   name.className = "fw-semibold text-break";
   name.textContent = item.name;
@@ -176,7 +214,7 @@ const resultRow = (item) => {
   const where = [item.model, item.part_no].filter(Boolean).join(" · ");
   if (where) {
     const detail = document.createElement("div");
-    detail.className = "small text-body-secondary";
+    detail.className = "small text-body-secondary text-break";
     detail.textContent = where;
     info.append(detail);
   }
@@ -186,39 +224,65 @@ const resultRow = (item) => {
   price.className = "fw-semibold";
   price.textContent = `₱${pesos(item.benta)}`;
   const stock = document.createElement("div");
-  stock.className = "small text-body-secondary";
+  // Stock at 0 or less is shown in red: a sale is still allowed, but the person should know.
+  stock.className = item.track_stock && item.stock <= 0 ? "small text-danger" : "small text-body-secondary";
   stock.textContent = item.track_stock ? `Stock ${item.stock}` : "No stock count";
   numbers.append(price, stock);
-  row.append(info, numbers);
+  const marker = document.createElement("div");
+  marker.className = "flex-shrink-0 text-center";
+  marker.style.minWidth = "2.25rem";
+  const count = inCart(item);
+  if (count > 0) {
+    const mark = document.createElement("span");
+    mark.className = "badge text-bg-primary";
+    mark.textContent = `×${count}`;
+    marker.append(mark);
+  } else {
+    const plus = document.createElement("span");
+    plus.className = "bi bi-plus-lg text-body-secondary";
+    plus.setAttribute("aria-hidden", "true");
+    marker.append(plus);
+  }
+  row.append(info, numbers, marker);
   row.addEventListener("click", () => addToCart(item));
   return row;
 };
 
-const searchItems = async () => {
-  const text = searchInput.value.trim();
-  resultsHint.classList.toggle("d-none", text !== "");
-  if (text === "") {
-    resultsBox.replaceChildren();
-    resultsEmpty.classList.add("d-none");
-    return;
-  }
+// renderList() -> shows the items that match the filter box (all of them when it is empty)
+const renderList = () => {
+  const words = filterWords();
+  const shown = allItems.filter((item) => matches(item, words));
+  itemListBox.replaceChildren(...shown.map(itemRow));
+  itemsEmpty.classList.toggle("d-none", shown.length > 0 || allItems.length === 0);
+  return shown;
+};
+
+const loadItems = async () => {
   try {
-    const response = await apiFetch(`/api/items?q=${encodeURIComponent(text)}&per_page=${RESULT_LIMIT}`);
+    const response = await apiFetch("/api/items/all");
     if (!response) return;
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
     hideError("load-error");
-    resultsBox.replaceChildren(...data.items.map(resultRow));
-    resultsEmpty.classList.toggle("d-none", data.items.length > 0);
+    allItems = data.items;
+    itemsStatus.textContent = allItems.length === 0 ? "No items yet. Add them on the Items page." : "";
+    itemsStatus.classList.toggle("d-none", allItems.length > 0);
+    renderList();
   } catch {
-    showError("load-error", "Could not load the items.");
+    itemsStatus.classList.add("d-none");
+    showError("load-error", "Could not load the items. Reload the page to try again.");
   }
 };
 
-let searchTimer = null;
-searchInput.addEventListener("input", () => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(searchItems, SEARCH_DELAY_MS);
+filterInput.addEventListener("input", renderList);
+// Enter adds the item when only one is left: quick for a typed or scanned code.
+filterInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  const shown = renderList();
+  if (shown.length === 1) {
+    addToCart(shown[0]);
+    filterInput.select();
+  }
 });
 
 // clearCopy() -> forgets the copied sale: no banner, no replace box, "/sell" in the address bar
@@ -270,6 +334,7 @@ const loadCopy = async (saleId) => {
       replaceBox.classList.remove("d-none");
     }
     renderCart();
+    showTab("cart");
   } catch {
     showError("load-error", "Could not copy that sale.");
   }
@@ -319,8 +384,9 @@ saveButton.addEventListener("click", async () => {
     noteInput.value = "";
     saleRef = newRef(); // the next customer is a new sale
     renderCart();
-    searchInput.value = "";
-    searchItems();
+    filterInput.value = "";
+    renderList();
+    showTab("items");
     window.scrollTo({ top: 0, behavior: "smooth" });
   } catch {
     // The reference stays the same, so tapping Save again cannot make a second sale.
@@ -332,6 +398,7 @@ saveButton.addEventListener("click", async () => {
 });
 
 updateTotals();
+loadItems();
 
 // A sale to copy comes in the address: /sell?copy=12
 const copyId = new URLSearchParams(window.location.search).get("copy");
