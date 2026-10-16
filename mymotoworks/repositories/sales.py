@@ -32,3 +32,20 @@ class SaleRepository(Repository):
         return self.one(
             "SELECT sales.*, users.name AS user_name FROM sales JOIN users ON users.id = sales.user_id "
             "WHERE sales.user_id = ? AND sales.client_ref = ?", (user_id, client_ref))
+
+    def list_for_day(self, sale_date):
+        """Every sale of the day, newest first, voided ones too."""
+        return self.all(
+            "SELECT sales.*, users.name AS user_name FROM sales JOIN users ON users.id = sales.user_id "
+            "WHERE sales.sale_date = ? ORDER BY sales.id DESC", (sale_date,))
+
+    def day_totals(self, sale_date):
+        """{"count", "total", "tubo"} of the valid (not voided) sales of the day."""
+        row = self.one(
+            "SELECT COUNT(*) AS count, COALESCE(SUM(total), 0) AS total FROM sales "
+            "WHERE sale_date = ? AND voided_at IS NULL", (sale_date,))
+        tubo = self.value(
+            "SELECT COALESCE(SUM((sale_lines.benta - sale_lines.puhunan) * sale_lines.qty), 0) "
+            "FROM sale_lines JOIN sales ON sales.id = sale_lines.sale_id "
+            "WHERE sales.sale_date = ? AND sales.voided_at IS NULL", (sale_date,))
+        return {"count": row["count"], "total": row["total"], "tubo": tubo}

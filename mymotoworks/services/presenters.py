@@ -1,5 +1,7 @@
 """Shape rows into the JSON the pages use. Never include password hashes."""
 
+from mymotoworks.config import shop_time_text
+
 
 def account_json(row):
     return {
@@ -55,6 +57,7 @@ def sale_json(sale, lines, role):
         "sale_date": sale["sale_date"],
         "total": sale["total"],
         "recorded_by": sale["user_name"],
+        "recorded_at": shop_time_text(sale["created_at"]),
         "voided": sale["voided_at"] is not None,
         "void_reason": sale["void_reason"],
         "lines": result_lines,

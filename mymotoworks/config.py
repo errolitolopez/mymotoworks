@@ -2,7 +2,7 @@
 
 import os
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 # Shop days are calendar days in the shop's time zone, wherever the server runs.
@@ -35,3 +35,9 @@ def load_secret_key(instance_path):
             f.write(secrets.token_hex(32))
     with open(path) as f:
         return f.read().strip()
+
+
+def shop_time_text(utc_text):
+    """"2026-10-16 02:30:00" (the database's UTC time) -> "10:30" at the shop."""
+    moment = datetime.strptime(utc_text, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    return moment.astimezone(SHOP_TIMEZONE).strftime("%H:%M")

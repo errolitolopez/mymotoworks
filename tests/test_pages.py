@@ -25,8 +25,8 @@ def test_logged_in_pages_have_a_bottom_tab_bar(admin):
 
 
 def test_tab_bar_follows_the_role(admin):
-    assert tab_links(page(admin, "/dashboard")) == ["Home", "Sell", "Items", "Users"]
-    assert tab_links(page(login("staff1"), "/sell")) == ["Sell", "Items"]
+    assert tab_links(page(admin, "/dashboard")) == ["Home", "Sell", "Sales", "Items", "Users"]
+    assert tab_links(page(login("staff1"), "/sell")) == ["Sell", "Sales", "Items"]
 
 
 def test_the_current_page_tab_is_marked(admin):

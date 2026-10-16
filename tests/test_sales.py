@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 
-from conftest import db_query, login, make_item
+from conftest import db_execute, db_query, login, make_item
 
 from mymotoworks.config import shop_today
 
@@ -216,3 +216,74 @@ def test_staff_land_on_the_sell_page_after_login(client):
     assert response.get_json()["home"] == "/sell"
     admin_login = client.post("/api/login", json={"username": "admin", "password": "admin"})
     assert admin_login.get_json()["home"] == "/dashboard"
+
+
+def day(client, date=None):
+    url = "/api/sales" + (f"?date={date}" if date else "")
+    return client.get(url)
+
+
+def test_the_day_lists_sales_newest_first_with_totals(admin):
+    item = make_item(admin, stock=9)
+    staff = login("staff1")
+    first = sell(staff, [{"item_id": item["id"], "qty": 1}]).get_json()["sale"]
+    second = sell(admin, [{"item_id": item["id"], "qty": 2}]).get_json()["sale"]
+    data = day(staff).get_json()
+    assert data["date"] == today()
+    assert [sale["id"] for sale in data["sales"]] == [second["id"], first["id"]]
+    assert data["summary"]["count"] == 2 and data["summary"]["total"] == 15000 + 30000
+    assert data["sales"][0]["lines"][0]["qty"] == 2
+
+
+def test_staff_see_the_day_without_cost_or_profit(admin):
+    item = make_item(admin, stock=9)
+    sell(admin, [{"item_id": item["id"], "qty": 1}])
+    text = day(login("staff1")).get_data(as_text=True)
+    assert "AIR FILTER SUNTAL" in text and "puhunan" not in text and "tubo" not in text
+
+
+def test_admin_sees_the_day_tubo(admin):
+    item = make_item(admin, stock=9)
+    sell(admin, [{"item_id": item["id"], "qty": 2}])
+    data = day(admin).get_json()
+    assert data["summary"]["tubo"] == 9300 and data["sales"][0]["tubo"] == 9300
+
+
+def test_staff_can_only_read_today(admin):
+    yesterday = (shop_today() - timedelta(days=1)).isoformat()
+    response = day(login("staff1"), yesterday)
+    assert response.status_code == 403
+    assert response.get_json()["error"] == "You can only see today's sales."
+    assert day(login("staff1"), today()).status_code == 200
+
+
+def test_admin_reads_any_day_and_sales_stay_on_their_own_day(admin):
+    item = make_item(admin, stock=9)
+    yesterday = (shop_today() - timedelta(days=1)).isoformat()
+    sell(admin, [{"item_id": item["id"], "qty": 1}], sale_date=yesterday)
+    assert day(admin).get_json()["summary"]["count"] == 0
+    assert day(admin, yesterday).get_json()["summary"]["count"] == 1
+    assert day(admin, "2020-01-01").get_json() == {
+        "date": "2020-01-01", "sales": [], "summary": {"count": 0, "total": 0, "tubo": 0}}
+
+
+def test_bad_day_is_refused(admin):
+    for bad in ("x", "2026-13-40", "20261016"):
+        response = day(admin, bad)
+        assert response.status_code == 400 and response.get_json()["error"] == "Date must look like 2026-10-16."
+
+
+def test_the_time_is_shown_in_shop_time(admin):
+    item = make_item(admin)
+    sale = sell(admin, [{"item_id": item["id"], "qty": 1}]).get_json()["sale"]
+    db_execute("UPDATE sales SET created_at = '2026-10-16 02:30:00' WHERE id = ?", (sale["id"],))
+    assert day(admin).get_json()["sales"][0]["recorded_at"] == "10:30"  # UTC+8
+
+
+def test_sales_page_and_tabs(admin, client):
+    assert login("staff1").get("/sales").status_code == 200
+    html = admin.get("/sales").get_data(as_text=True)
+    assert 'id="day-date"' in html
+    assert 'id="day-date"' not in login("staff1").get("/sales").get_data(as_text=True)
+    assert client.get("/sales").status_code == 302
+    assert client.get("/api/sales").status_code == 401
