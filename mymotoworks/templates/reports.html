@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Reports · mymotoworks{% endblock %}
+
+{% block content %}
+{% include "_navbar.html" %}
+<main class="container py-4" id="reports-main">
+  <h1 class="h4 mb-3">Reports</h1>
+
+  <div class="btn-group w-100 mb-3" role="tablist" aria-label="Reports">
+    <button id="tab-sales" type="button" class="btn btn-outline-primary active" role="tab"
+            aria-selected="true" aria-controls="panel-sales">Sales</button>
+    <button id="tab-stock" type="button" class="btn btn-outline-primary" role="tab"
+            aria-selected="false" aria-controls="panel-stock">Stock</button>
+  </div>
+
+  <div id="load-error" class="alert alert-danger py-2 d-none" role="alert"></div>
+
+  <section id="panel-sales" aria-label="Sales report">
+    <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+      <button id="prev-month" type="button" class="btn btn-outline-secondary bi bi-chevron-left" aria-label="Previous month"></button>
+      <div class="text-center">
+        <div id="month-label" class="fw-semibold fs-5"></div>
+        <button id="this-month" type="button" class="btn btn-link btn-sm p-0">This month</button>
+      </div>
+      <button id="next-month" type="button" class="btn btn-outline-secondary bi bi-chevron-right" aria-label="Next month"></button>
+    </div>
+
+    <div class="row g-2 mb-3">
+      <div class="col-6"><div class="card"><div class="card-body py-2"><div class="small text-body-secondary">Sales</div><div id="sum-total" class="fs-5 fw-semibold">₱0.00</div></div></div></div>
+      <div class="col-6"><div class="card"><div class="card-body py-2"><div class="small text-body-secondary">Tubo</div><div id="sum-tubo" class="fs-5 fw-semibold">₱0.00</div></div></div></div>
+      <div class="col-6"><div class="card"><div class="card-body py-2"><div class="small text-body-secondary">Cost of what sold</div><div id="sum-cost" class="fs-6 fw-semibold">₱0.00</div></div></div></div>
+      <div class="col-6"><div class="card"><div class="card-body py-2"><div class="small text-body-secondary">Spent on restocks</div><div id="sum-restocked" class="fs-6 fw-semibold">₱0.00</div></div></div></div>
+    </div>
+    <p id="sum-count" class="small text-body-secondary mb-3"></p>
+
+    <h2 class="h6">Day by day</h2>
+    <div id="day-list" class="list-group mb-3"></div>
+    <p id="day-empty" class="text-body-secondary text-center py-3 d-none">No sales this month.</p>
+
+    <h2 class="h6">Best sellers</h2>
+    <div id="best-list" class="list-group mb-3"></div>
+
+    <h2 class="h6" id="year-title">The year</h2>
+    <div id="year-list" class="list-group mb-3"></div>
+  </section>
+
+  <section id="panel-stock" class="d-none" aria-label="Stock report"></section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/reports.js') }}"></script>
+{% endblock %}

@@ -1,6 +1,6 @@
 {# One list of pages, used by the desktop tabs and by the phone tab bar. #}
 {% set tabs = [("sales.sell_page", "Sell", "bi-cart3"), ("sales.history_page", "Sales", "bi-receipt"), ("items.page", "Items", "bi-box-seam")] %}
-{% if user.role == "admin" %}{% set tabs = [("dashboard.page", "Home", "bi-house")] + tabs + [("accounts.page", "Users", "bi-people")] %}{% endif %}
+{% if user.role == "admin" %}{% set tabs = [("dashboard.page", "Home", "bi-house")] + tabs + [("accounts.page", "Users", "bi-people"), ("reports.page", "Reports", "bi-graph-up")] %}{% endif %}
 
 <nav class="navbar border-bottom">
   <div class="container">
