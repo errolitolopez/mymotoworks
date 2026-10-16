@@ -1,0 +1,67 @@
+/* A small theme on top of Bootstrap: a calm gray gradient page and frosted panels (cards,
+   navbar, modals). Light and dark follow data-bs-theme (see theme.js). */
+
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(226, 232, 240, 0.8);
+  --glass-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --glass-blur: blur(12px);
+  --glass-solid: #fff;
+  --page-base: #f3f4f6;
+  --page-gradient: radial-gradient(circle at top left, hsl(220 13% 95%), hsl(220 13% 91%));
+}
+
+[data-bs-theme="dark"] {
+  --glass-bg: rgba(15, 23, 42, 0.6);
+  --glass-border: rgba(51, 65, 85, 0.8);
+  --glass-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --glass-solid: #1e293b;
+  --page-base: #0f172a;
+  --page-gradient: radial-gradient(circle at top left, hsl(222 47% 15%), hsl(222 47% 11%));
+}
+
+body {
+  background-color: var(--page-base);
+  background-image: var(--page-gradient);
+  background-attachment: fixed;
+}
+
+/* Set Bootstrap's own variables, not its selectors. Blur only on panels, never per list row:
+   it is slow on phones. */
+.card,
+.modal-content {
+  --bs-card-bg: var(--glass-bg);
+  --bs-card-border-color: var(--glass-border);
+  --bs-card-border-radius: 1rem;
+  --bs-modal-bg: var(--glass-bg);
+  background-color: var(--glass-bg);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+}
+
+/* Where blur is not supported, or the person asked for less transparency, use plain panels. */
+@supports not (backdrop-filter: blur(1px)) {
+  .card,
+  .modal-content {
+    background-color: var(--glass-solid);
+    --bs-card-bg: var(--glass-solid);
+    --bs-modal-bg: var(--glass-solid);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .card,
+  .modal-content {
+    background-color: var(--glass-solid);
+    --bs-card-bg: var(--glass-solid);
+    --bs-modal-bg: var(--glass-solid);
+    backdrop-filter: none;
+  }
+}
+
+/* theme.js adds .preload on first load so nothing animates while the first theme is applied.
+   !important is needed to beat Bootstrap's own transitions. */
+.preload * {
+  transition: none !important;
+}

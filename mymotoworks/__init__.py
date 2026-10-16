@@ -1,0 +1,23 @@
+"""mymotoworks: inventory, restock, sales and cash for Jaryl's Motoworks.
+
+Layers (each only uses the ones below it):
+  web/           Flask blueprints: pages and JSON API, login/role checks
+  services/      use cases (one class per area), commit when the work is done
+  repositories/  all SQL, one class per kind of data
+  domain/        rules with no Flask or SQL: money, cash on hand, stock rules
+"""
+
+from flask import Flask
+
+from mymotoworks import config
+from mymotoworks.web import BLUEPRINTS
+
+
+def create_app(test_config=None):
+    app = Flask(__name__, instance_relative_config=True)
+    config.configure(app, test_config)
+
+    for blueprint in BLUEPRINTS:
+        app.register_blueprint(blueprint)
+
+    return app
