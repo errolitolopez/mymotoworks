@@ -88,6 +88,7 @@ const itemRow = (item) => {
   if (isAdmin) {
     row.append(actionMenu([
       ...(item.track_stock ? [{ icon: "bi-sliders", label: "Adjust stock", onClick: () => openAdjust(item) }] : []),
+      { icon: "bi-journal-text", label: "Stock changes", onClick: () => { window.location.href = `/stock-history?item=${item.id}`; } },
       { icon: "bi-pencil", label: "Edit", onClick: () => openFormForEdit(item) },
       { icon: item.active ? "bi-slash-circle" : "bi-check-circle", label: item.active ? "Deactivate" : "Activate",
         onClick: (trigger) => toggleActive(item, trigger) },

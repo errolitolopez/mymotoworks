@@ -35,3 +35,22 @@ class StockRepository(Repository):
         return self.one(
             f"SELECT {BATCH_COLUMNS} FROM stock_batches JOIN users ON users.id = stock_batches.user_id "
             "WHERE stock_batches.user_id = ? AND stock_batches.client_ref = ?", (user_id, client_ref))
+
+    @staticmethod
+    def _filter(item_id):
+        """The WHERE part and its parameters: one item, or all of them."""
+        return ("WHERE stock_adjustments.item_id = ?", [item_id]) if item_id is not None else ("", [])
+
+    def count_adjustments(self, item_id=None):
+        where, params = self._filter(item_id)
+        return self.value(f"SELECT COUNT(*) FROM stock_adjustments {where}", params)
+
+    def page_adjustments(self, item_id, limit, offset):
+        """One page of changes, newest first. Each row carries its batch's kind, reason, note, time and who."""
+        where, params = self._filter(item_id)
+        return self.all(
+            "SELECT stock_adjustments.*, stock_batches.kind, stock_batches.reason, stock_batches.note, "
+            "stock_batches.created_at, users.name AS user_name FROM stock_adjustments "
+            "JOIN stock_batches ON stock_batches.id = stock_adjustments.batch_id "
+            f"JOIN users ON users.id = stock_batches.user_id {where} "
+            "ORDER BY stock_adjustments.id DESC LIMIT ? OFFSET ?", params + [limit, offset])

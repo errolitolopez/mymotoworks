@@ -14,6 +14,7 @@
                 data-bs-toggle="dropdown" aria-expanded="false"> Stock</button>
         <ul class="dropdown-menu dropdown-menu-end">
           <li><a class="dropdown-item bi bi-box-arrow-in-down" href="{{ url_for('restocks.new_page') }}"> Restock</a></li>
+          <li><a class="dropdown-item bi bi-journal-text" href="{{ url_for('stock.history_page') }}"> Stock changes</a></li>
         </ul>
       </div>
       <button id="add-button" type="button" class="btn btn-primary bi bi-plus-lg"> Add item</button>

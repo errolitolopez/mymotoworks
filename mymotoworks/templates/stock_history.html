@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Stock changes · mymotoworks{% endblock %}
+
+{% block content %}
+{% include "_navbar.html" %}
+<main class="container py-4" id="history-main">
+  <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0">Stock changes</h1>
+    <a href="{{ url_for('items.page') }}" class="btn btn-outline-secondary bi bi-box-seam"> Items</a>
+  </div>
+
+  <div id="item-banner" class="alert alert-info d-flex flex-wrap justify-content-between align-items-center gap-2 d-none" role="status">
+    <span id="item-banner-text"></span>
+    <a href="{{ url_for('stock.history_page') }}" class="btn btn-outline-secondary btn-sm">Show all</a>
+  </div>
+
+  <div id="load-error" class="alert alert-danger py-2 d-none" role="alert"></div>
+  <div id="adjustment-list" class="list-group"></div>
+  <p id="empty-state" class="text-body-secondary text-center py-4 d-none">No stock changes yet.</p>
+
+  <div id="pager" class="d-flex justify-content-between align-items-center gap-2 mt-3 d-none">
+    <button id="prev-button" type="button" class="btn btn-outline-secondary bi bi-chevron-left"> Prev</button>
+    <span id="page-label" class="small text-body-secondary"></span>
+    <button id="next-button" type="button" class="btn btn-outline-secondary bi bi-chevron-right"> Next</button>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/stock-history.js') }}"></script>
+{% endblock %}

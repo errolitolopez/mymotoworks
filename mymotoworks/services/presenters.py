@@ -127,3 +127,16 @@ def batch_json(batch, adjustments):
         "recorded_at": shop_time_text(batch["created_at"]),
         "adjustments": [adjustment_json(row) for row in adjustments],
     }
+
+
+def history_json(row):
+    """One change in the history: the item's change plus its batch's reason, note, who and when."""
+    return {
+        **adjustment_json(row),
+        "kind": row["kind"],
+        "reason": row["reason"],
+        "reason_label": REASONS[row["reason"]],
+        "note": row["note"],
+        "recorded_by": row["user_name"],
+        "recorded_at": shop_time_text(row["created_at"]),
+    }

@@ -130,3 +130,77 @@ def test_staff_and_visitors_cannot_adjust(admin, client):
     assert adjust(login("staff1"), line).status_code == 403
     assert adjust(client, line).status_code == 401
     assert item_row(admin, item)["stock"] == 5
+
+
+def history(client, query=""):
+    return client.get("/api/stock-adjustments" + query)
+
+
+def many_adjustments(admin, count, item=None):
+    item = item or make_item(admin, stock=1000)
+    for _ in range(count):
+        assert adjust(admin, [{"item_id": item["id"], "change": -1}]).status_code == 201
+    return item
+
+
+def test_the_history_lists_changes_newest_first_with_all_the_details(admin):
+    item = make_item(admin, stock=10)
+    adjust(admin, [{"item_id": item["id"], "change": -2}], reason="lost", note="Dropped")
+    adjust(admin, [{"item_id": item["id"], "change": 5}], reason="count_correction")
+    data = history(admin).get_json()
+    assert data["total"] == 2 and data["page"] == 1 and data["pages"] == 1 and data["item"] is None
+    newest, oldest = data["adjustments"]
+    assert newest["change"] == 5 and newest["stock_before"] == 8 and newest["stock_after"] == 13
+    assert newest["reason"] == "count_correction" and newest["reason_label"] == "Count correction"
+    assert oldest["change"] == -2 and oldest["stock_before"] == 10 and oldest["stock_after"] == 8
+    assert oldest["note"] == "Dropped" and oldest["recorded_by"] == "Administrator" and oldest["kind"] == "adjustment"
+    assert oldest["name"] == "AIR FILTER SUNTAL" and oldest["item_id"] == item["id"]
+
+
+def test_the_history_can_be_filtered_by_item(admin):
+    first, second = make_item(admin, stock=10), make_item(admin, name="SPARK PLUG", stock=10)
+    adjust(admin, [{"item_id": first["id"], "change": -1}])
+    adjust(admin, [{"item_id": second["id"], "change": -2}])
+    data = history(admin, f"?item={second['id']}").get_json()
+    assert [row["item_id"] for row in data["adjustments"]] == [second["id"]]
+    assert data["item"] == {"id": second["id"], "name": "SPARK PLUG", "stock": 8}
+    assert history(admin, "?item=9999").status_code == 404
+    assert history(admin, "?item=abc").get_json()["total"] == 2  # a bad number means no filter
+
+
+def test_the_history_is_paged(admin):
+    many_adjustments(admin, 25)
+    first = history(admin).get_json()
+    assert first["total"] == 25 and first["pages"] == 2 and len(first["adjustments"]) == 20
+    assert len(history(admin, "?page=2").get_json()["adjustments"]) == 5
+    assert history(admin, "?page=99").get_json()["adjustments"] == []
+    assert history(admin, "?page=0").get_json()["page"] == 1
+    assert history(admin, "?page=abc").get_json()["page"] == 1
+    assert len(history(admin, "?per_page=5").get_json()["adjustments"]) == 5
+    assert len(history(admin, "?per_page=5000").get_json()["adjustments"]) == 25  # capped at 50
+
+
+def test_an_empty_history(admin):
+    assert history(admin).get_json() == {"adjustments": [], "page": 1, "pages": 1, "total": 0, "item": None}
+
+
+def test_the_time_is_shown_in_shop_time(admin):
+    from conftest import db_execute
+    item = make_item(admin, stock=5)
+    batch = adjust(admin, [{"item_id": item["id"], "change": -1}]).get_json()["batch"]
+    db_execute("UPDATE stock_batches SET created_at = '2026-10-16 02:30:00' WHERE id = ?", (batch["id"],))
+    assert history(admin).get_json()["adjustments"][0]["recorded_at"] == "10:30"  # UTC+8
+
+
+def test_the_history_is_for_the_admin_only(admin, client):
+    assert history(login("staff1")).status_code == 403
+    assert history(client).status_code == 401
+    assert admin.get("/stock-history").status_code == 200
+    assert login("staff1").get("/stock-history").status_code == 302
+    assert client.get("/stock-history").status_code == 302
+
+
+def test_the_history_page_and_the_menus_link_to_it(admin):
+    html = admin.get("/stock-history").get_data(as_text=True)
+    assert 'id="adjustment-list"' in html and 'id="pager"' in html
+    assert 'href="/stock-history"' in admin.get("/items").get_data(as_text=True)

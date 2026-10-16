@@ -1,10 +1,12 @@
 """Stock use cases: adjust the stock of items, list the changes, recount."""
 
+import math
+
 from mymotoworks.domain.stock import clean_adjustment
-from mymotoworks.errors import ValidationError
+from mymotoworks.errors import NotFoundError, ValidationError
 from mymotoworks.repositories import ItemRepository, StockRepository
 from mymotoworks.services.base import Service
-from mymotoworks.services.presenters import batch_json
+from mymotoworks.services.presenters import batch_json, history_json
 
 
 class StockService(Service):
@@ -44,3 +46,22 @@ class StockService(Service):
             self.items.change_stock(item["id"], change)
         self.commit()
         return {"batch": self._json(self.stock.get_batch(batch_id)), "duplicate": False}
+
+    DEFAULT_PER_PAGE = 20
+    MAX_PER_PAGE = 50
+
+    def list(self, item_id=None, page=1, per_page=DEFAULT_PER_PAGE):
+        """One page of stock changes, newest first, for all items or for one."""
+        item = None
+        if item_id is not None:
+            row = self.items.get(item_id)
+            if row is None:
+                raise NotFoundError("Item not found.")
+            item = {"id": row["id"], "name": row["name"], "stock": row["stock"]}
+        per_page = max(1, min(per_page, self.MAX_PER_PAGE))
+        total = self.stock.count_adjustments(item_id)
+        pages = max(1, math.ceil(total / per_page))
+        page = max(1, page)
+        rows = self.stock.page_adjustments(item_id, per_page, (page - 1) * per_page)
+        return {"adjustments": [history_json(row) for row in rows], "page": page, "pages": pages,
+                "total": total, "item": item}
