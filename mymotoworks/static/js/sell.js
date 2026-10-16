@@ -12,6 +12,7 @@ const cartEmpty = document.getElementById("cart-empty");
 const totalBox = document.getElementById("cart-total");
 const saveButton = document.getElementById("save-sale");
 const dateInput = document.getElementById("sale-date"); // only the admin has it
+const noteInput = document.getElementById("sale-note");
 
 // Each line: {item, qty, price} where price is centavos (the item's own price unless changed).
 let cart = [];
@@ -233,6 +234,7 @@ saveButton.addEventListener("click", async () => {
       })),
     };
     if (dateInput && dateInput.value) body.sale_date = dateInput.value;
+    if (noteInput.value.trim()) body.note = noteInput.value;
     const response = await apiFetch("/api/sales", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -248,6 +250,7 @@ saveButton.addEventListener("click", async () => {
     message.textContent = `Sale #${data.sale.id} saved: ₱${pesos(data.sale.total)}.`;
     message.classList.remove("d-none");
     cart = [];
+    noteInput.value = "";
     saleRef = newRef(); // the next customer is a new sale
     renderCart();
     searchInput.value = "";

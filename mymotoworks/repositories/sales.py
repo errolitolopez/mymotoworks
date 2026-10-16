@@ -4,10 +4,10 @@ from mymotoworks.repositories.base import Repository
 
 
 class SaleRepository(Repository):
-    def create(self, sale_date, user_id, total, client_ref):
+    def create(self, sale_date, user_id, total, client_ref, note=""):
         cursor = self.execute(
-            "INSERT INTO sales (sale_date, user_id, total, client_ref) VALUES (?, ?, ?, ?)",
-            (sale_date, user_id, total, client_ref),
+            "INSERT INTO sales (sale_date, user_id, total, client_ref, note) VALUES (?, ?, ?, ?, ?)",
+            (sale_date, user_id, total, client_ref, note),
         )
         return cursor.lastrowid
 

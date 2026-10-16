@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS sales (
     voided_at TEXT,
     voided_by INTEGER REFERENCES users(id),
     void_reason TEXT NOT NULL DEFAULT '',
+    -- Free text such as the customer's name, so a sale can be found and tracked later.
+    note TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

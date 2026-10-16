@@ -39,7 +39,8 @@ class SaleService(Service):
             priced.append((item, line["qty"], benta))
             total += line["qty"] * benta
 
-        sale_id = self.sales.create(request["sale_date"], self.user["id"], total, request["client_ref"])
+        sale_id = self.sales.create(request["sale_date"], self.user["id"], total, request["client_ref"],
+                                    request["note"])
         for item, qty, benta in priced:
             self.sales.add_line(sale_id, item, qty, benta)
             if item["track_stock"]:

@@ -36,7 +36,17 @@ const saleCard = (sale) => {
     head.classList.add("text-decoration-line-through", "text-body-secondary");
     total.classList.add("text-decoration-line-through", "text-body-secondary");
   }
-  summary.append(head, total);
+  // The note (for example the customer's name) shows under the sale number, so it can be found at a glance.
+  const left = document.createElement("span");
+  left.className = "min-w-0";
+  left.append(head);
+  if (sale.note) {
+    const note = document.createElement("div");
+    note.className = "small text-body-secondary text-break";
+    note.textContent = sale.note;
+    left.append(note);
+  }
+  summary.append(left, total);
 
   const body = document.createElement("div");
   body.className = "card-body border-top d-flex flex-column gap-1 pt-2";

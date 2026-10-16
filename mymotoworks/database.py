@@ -7,6 +7,7 @@ from flask import current_app, g
 from flask.cli import with_appcontext
 from werkzeug.security import generate_password_hash
 
+from mymotoworks.migrations import add_missing_columns
 from mymotoworks.repositories import UserRepository
 
 DEFAULT_ADMIN_USERNAME = "admin"
@@ -33,6 +34,7 @@ def init_db():
     db = get_db()
     with current_app.open_resource("schema.sql") as f:
         db.executescript(f.read().decode("utf8"))
+    add_missing_columns(db)
     create_default_admin(db)
 
 

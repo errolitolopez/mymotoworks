@@ -33,6 +33,7 @@ mymotoworks/
   services/             use cases (auth, accounts, items, item import, sales); they check roles and commit
   seed.py               flask --app app seed: about 140 sample items (only when there are none)
   imports.py            reading the old spreadsheet, and the import-items command
+  migrations.py         adds columns that older databases lack (runs on every start)
   web/                  Flask blueprints (pages + JSON API)
   templates/, static/   base.html, home.html, glass.css, theme.js
 tests/                  pytest suite
@@ -48,6 +49,8 @@ with the right status, with nothing saved.
 - **Sell** (staff land here after login): search an item, tap it into the cart, change the quantity
   or the price of a line, save. Stock goes down for items whose stock is counted. A sale may take
   stock below 0 (the cart warns); wrong counts are fixed with stock adjustments later.
+- Each sale can have an optional **note** (up to 100 characters, for example the customer's name). It
+  is saved with the sale and shown under the sale number on the Sales page.
 - Each cart has its own reference, so a double tap or a retry saves the sale only once. A bad line
   saves nothing and changes no stock.
 - Staff record only today's sales; the admin can also pick a past day, never a future one.

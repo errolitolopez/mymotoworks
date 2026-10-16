@@ -373,3 +373,68 @@ def test_a_voided_sale_with_the_same_cart_reference_is_not_saved_again(admin):
 def test_void_form_is_only_on_the_admin_sales_page(admin):
     assert 'id="void-modal"' in admin.get("/sales").get_data(as_text=True)
     assert 'id="void-modal"' not in login("staff1").get("/sales").get_data(as_text=True)
+
+
+def test_a_note_is_saved_trimmed_and_shown_in_the_day(admin):
+    item = make_item(admin, stock=9)
+    sale = sell(login("staff1"), [{"item_id": item["id"], "qty": 1}], note="  Mang   Ben  (tricycle) ").get_json()["sale"]
+    assert sale["note"] == "Mang Ben (tricycle)"
+    assert day(admin).get_json()["sales"][0]["note"] == "Mang Ben (tricycle)"
+
+
+def test_the_note_is_optional(admin):
+    item = make_item(admin, stock=9)
+    line = [{"item_id": item["id"], "qty": 1}]
+    assert sell(admin, line).get_json()["sale"]["note"] == ""
+    assert sell(admin, line, note=None).get_json()["sale"]["note"] == ""
+    assert sell(admin, line, note="   ").get_json()["sale"]["note"] == ""
+
+
+def test_note_rules(admin):
+    item = make_item(admin, stock=9)
+    line = [{"item_id": item["id"], "qty": 1}]
+    long = sell(admin, line, note="x" * 101)
+    assert long.status_code == 400 and long.get_json()["error"] == "Note can be at most 100 characters."
+    assert sell(admin, line, note="x" * 100).status_code == 201
+    for bad in (123, ["Ben"], True, {"a": 1}):
+        response = sell(admin, line, note=bad)
+        assert response.status_code == 400 and response.get_json()["error"] == "Note must be text.", bad
+
+
+def test_a_note_with_html_is_kept_as_plain_text(admin):
+    item = make_item(admin, stock=9)
+    sale = sell(admin, [{"item_id": item["id"], "qty": 1}], note="<b>Ben</b> & co").get_json()["sale"]
+    assert sale["note"] == "<b>Ben</b> & co"  # the page shows it with textContent, never as HTML
+
+
+def test_the_note_survives_a_duplicate_tap(admin):
+    item = make_item(admin, stock=9)
+    line = [{"item_id": item["id"], "qty": 1}]
+    sell(admin, line, client_ref="r1", note="Ben")
+    again = sell(admin, line, client_ref="r1", note="Ben")
+    assert again.get_json()["duplicate"] is True and again.get_json()["sale"]["note"] == "Ben"
+
+
+def test_the_sell_page_has_a_note_box(admin):
+    assert 'id="sale-note"' in admin.get("/sell").get_data(as_text=True)
+    assert 'id="sale-note"' in login("staff1").get("/sell").get_data(as_text=True)
+
+
+def test_an_old_database_without_the_note_column_is_upgraded_and_keeps_its_sales(tmp_path):
+    import sqlite3
+    from mymotoworks import create_app
+
+    path = str(tmp_path / "old.db")
+    old = sqlite3.connect(path)
+    old.execute("CREATE TABLE sales (id INTEGER PRIMARY KEY AUTOINCREMENT, sale_date TEXT NOT NULL, "
+                "user_id INTEGER NOT NULL, total INTEGER NOT NULL, client_ref TEXT UNIQUE, voided_at TEXT, "
+                "voided_by INTEGER, void_reason TEXT NOT NULL DEFAULT '', "
+                "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+    old.execute("INSERT INTO sales (sale_date, user_id, total) VALUES ('2026-10-16', 1, 500)")
+    old.commit()
+    old.close()
+    for _ in range(2):  # starting twice must not fail
+        create_app({"DATABASE": path})
+    upgraded = sqlite3.connect(path)
+    assert upgraded.execute("SELECT total, note FROM sales").fetchall() == [(500, "")]
+    upgraded.close()

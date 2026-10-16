@@ -22,6 +22,11 @@
       <p id="cart-empty" class="text-body-secondary mb-0">Nothing yet.</p>
       <div id="cart-lines" class="d-flex flex-column gap-3"></div>
 
+      <div class="mt-3">
+        <label for="sale-note" class="form-label">Note <span class="text-body-secondary">(optional, like the customer's name)</span></label>
+        <input id="sale-note" type="text" class="form-control" maxlength="100" autocomplete="off">
+      </div>
+
       {% if user.role == "admin" %}
       <div class="mt-3">
         <label for="sale-date" class="form-label">Date of the sale</label>

@@ -60,6 +60,7 @@ def sale_json(sale, lines, role):
         "recorded_at": shop_time_text(sale["created_at"]),
         "voided": sale["voided_at"] is not None,
         "void_reason": sale["void_reason"],
+        "note": sale["note"],
         "lines": result_lines,
     }
     if admin:
