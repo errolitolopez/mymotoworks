@@ -1,7 +1,8 @@
 """The Reports page, its API and the Excel downloads. Admin only."""
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, Response, jsonify, render_template, request
 
+from mymotoworks import exports
 from mymotoworks.database import get_db
 from mymotoworks.services import ReportService
 from mymotoworks.web.security import current_user, role_required_api, role_required_page
@@ -44,3 +45,28 @@ def api_months():
 def api_stock():
     """The value of the stock, the low and below-zero items, and where the most money sits."""
     return jsonify(service().stock())
+
+
+XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _download(content, filename):
+    return Response(content, mimetype=XLSX_TYPE, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
+@bp.get("/reports/sales.xlsx")
+@role_required_api("admin")
+def download_sales():
+    """The month's sales report as an Excel file. ?month=2026-10 (this month when missing)."""
+    reports = service()
+    report = reports.sales(_single("month"))
+    months = reports.months(report["month"][:4])
+    return _download(exports.sales_workbook(report, months), f"mymotoworks-sales-{report['month']}.xlsx")
+
+
+@bp.get("/reports/stock.xlsx")
+@role_required_api("admin")
+def download_stock():
+    """The stock report as an Excel file."""
+    reports = service()
+    return _download(exports.stock_workbook(reports.stock(), reports.stock_items()), "mymotoworks-stock.xlsx")

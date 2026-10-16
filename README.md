@@ -30,10 +30,11 @@ mymotoworks/
   schema.sql            the tables
   domain/               rules with no Flask or SQL (accounts, items, money, text helpers)
   repositories/         all SQL, one class per kind of data; they never commit
-  services/             use cases (auth, accounts, items, item import, sales, restocks, stock); they check roles and commit
+  services/             use cases (auth, accounts, items, item import, sales, restocks, stock, reports); they check roles and commit
   seed.py               flask --app app seed: about 140 sample items (only when there are none)
   imports.py            reading the old spreadsheet, and the import-items command
   migrations.py         adds columns that older databases lack (runs on every start)
+  exports.py            the Excel files of the reports
   web/                  Flask blueprints (pages + JSON API)
   templates/, static/   base.html, home.html, glass.css, theme.js
 tests/                  pytest suite
@@ -97,6 +98,21 @@ All under the **Stock** menu on the Items page.
   reason, the note, who and when. An item's ⋮ menu opens it filtered to that item.
 - Nothing is edited or deleted. A mistake is fixed with another adjustment the other way round. A
   double tap on Save changes the stock once.
+
+## Reports (admin)
+
+The **Reports** tab, two parts:
+
+- **Sales**: pick a month with ‹ ›. Four cards (sales, tubo, cost of what sold, spent on restocks), a
+  line per day with sales, the 10 best sellers, and each month of the year. Only sales that are
+  approved and not voided count, on the sale's own date. Cost and tubo use the puhunan each sale was
+  made with, so a later restock never rewrites past tubo.
+- **Stock**: capital in stock (puhunan × stock), what it would bring if all sold (benta × stock), tubo if
+  all sold, items and pieces, low stock, out of stock, items below zero and the 10 items where the most
+  money sits. Only active items that count stock; a stock below 0 counts as 0 in the values.
+- **Download Excel** on each part: `mymotoworks-sales-2026-10.xlsx` (Days, Best sellers, Months) and
+  `mymotoworks-stock.xlsx` (Summary, Low stock, All items). Money cells are numbers, and a name that
+  starts with `=`, `+`, `-` or `@` stays text.
 
 ## Loading the old spreadsheet
 

@@ -57,6 +57,8 @@ const emptyRow = (text) => {
 
 const showSales = (data) => {
   month = data.month;
+  // The Excel file is for the month on screen.
+  document.getElementById("download-sales").href = `/reports/sales.xlsx?month=${month}`;
   document.getElementById("month-label").textContent = monthLabel(month);
   document.getElementById("next-month").disabled = thisMonth !== "" && month >= thisMonth;
   const totals = data.totals;

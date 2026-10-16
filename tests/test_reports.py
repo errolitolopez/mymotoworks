@@ -236,3 +236,92 @@ def test_the_stock_tab_has_its_parts(admin):
     html = admin.get("/reports").get_data(as_text=True)
     for element in ('id="stock-cards"', 'id="low-list"', 'id="zero-list"', 'id="capital-list"'):
         assert element in html, element
+
+
+from io import BytesIO
+
+from openpyxl import load_workbook
+
+XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def open_xlsx(response):
+    assert response.status_code == 200, response.get_data(as_text=True)
+    assert response.mimetype == XLSX
+    return load_workbook(BytesIO(response.data))
+
+
+def sheet_rows(workbook, name):
+    return [[cell for cell in row] for row in workbook[name].iter_rows(values_only=True)]
+
+
+def test_the_sales_download_has_the_days_totals_and_best_sellers(admin):
+    item = make_item(admin, stock=9)
+    make_sale(admin, item, qty=2)
+    response = admin.get(f"/reports/sales.xlsx?month={this_month()}")
+    assert f"mymotoworks-sales-{this_month()}.xlsx" in response.headers["Content-Disposition"]
+    workbook = open_xlsx(response)
+    assert workbook.sheetnames == ["Days", "Best sellers", "Months"]
+    days = sheet_rows(workbook, "Days")
+    assert days[0] == ["Date", "Sales", "Pieces", "Total", "Cost", "Tubo"]
+    assert days[1] == [shop_today().isoformat(), 1, 2, 300.0, 207.0, 93.0]
+    total_row = next(row for row in days if row[0] == "Total")
+    assert total_row[1:] == [1, 2, 300.0, 207.0, 93.0]
+    assert next(row for row in days if row[0] == "Spent on restocks")[3] == 0
+    best = sheet_rows(workbook, "Best sellers")
+    assert best[0] == ["Item", "Pieces", "Total", "Tubo"] and best[1] == ["AIR FILTER SUNTAL", 2, 300.0, 93.0]
+    months = sheet_rows(workbook, "Months")
+    assert months[0] == ["Month", "Sales", "Pieces", "Total", "Cost", "Tubo"] and months[1][0] == this_month()
+
+
+def test_money_cells_are_numbers_not_text(admin):
+    item = make_item(admin, stock=9)
+    make_sale(admin, item, qty=1)
+    sheet = open_xlsx(admin.get("/reports/sales.xlsx"))["Days"]
+    # A whole amount such as 150.00 is read back as the number 150: what matters is that it is a number.
+    assert isinstance(sheet["D2"].value, (int, float)) and sheet["D2"].value == 150
+    assert sheet["D2"].number_format == "#,##0.00" and sheet["D2"].data_type == "n"
+
+
+def test_the_sales_download_follows_the_month_and_defaults_to_this_one(admin):
+    assert open_xlsx(admin.get("/reports/sales.xlsx"))["Days"]["A1"].value == "Date"
+    response = admin.get("/reports/sales.xlsx?month=2020-01")
+    assert "mymotoworks-sales-2020-01.xlsx" in response.headers["Content-Disposition"]
+    assert "Total" in [row[0] for row in sheet_rows(open_xlsx(response), "Days")]
+    bad = admin.get("/reports/sales.xlsx?month=2026-13")
+    assert bad.status_code == 400 and bad.get_json()["error"] == "Month must look like 2026-10."
+
+
+def test_the_stock_download_has_a_summary_the_low_items_and_every_item(admin):
+    make_item(admin, name="A", stock=3)
+    make_item(admin, name="B", stock=0, reorder_level=1, puhunan=5000, benta=9000)
+    workbook = open_xlsx(admin.get("/reports/stock.xlsx"))
+    assert workbook.sheetnames == ["Summary", "Low stock", "All items"]
+    summary = dict((row[0], row[1]) for row in sheet_rows(workbook, "Summary") if row[0])
+    assert summary["Capital in stock"] == 310.5 and summary["If all sold (revenue)"] == 450.0
+    assert summary["Items"] == 2
+    low = sheet_rows(workbook, "Low stock")
+    assert low[0][0] == "Item" and [row[0] for row in low[1:]] == ["B"]
+    items = sheet_rows(workbook, "All items")
+    assert items[0] == ["Item", "Model", "Part no.", "Puhunan", "Benta", "Stock", "Capital", "Revenue if sold"]
+    assert [row[0] for row in items[1:]] == ["A", "B"] and items[1][3] == 103.5 and items[1][6] == 310.5
+
+
+def test_a_name_that_looks_like_a_formula_stays_text(admin):
+    make_item(admin, name="=1+1", model="@SUM(A1)", part_no="-5", stock=2)
+    sheet = open_xlsx(admin.get("/reports/stock.xlsx"))["All items"]
+    for coordinate in ("A2", "B2", "C2"):
+        assert sheet[coordinate].data_type == "s", coordinate
+    assert sheet["A2"].value == "=1+1"
+
+
+def test_the_downloads_are_for_the_admin_only(admin, client):
+    assert login("staff1").get("/reports/sales.xlsx").status_code == 403
+    assert login("staff1").get("/reports/stock.xlsx").status_code == 403
+    assert client.get("/reports/sales.xlsx").status_code == 401
+    assert client.get("/reports/stock.xlsx").status_code == 401
+
+
+def test_the_reports_page_has_the_download_buttons(admin):
+    html = admin.get("/reports").get_data(as_text=True)
+    assert 'id="download-sales"' in html and 'id="download-stock"' in html
