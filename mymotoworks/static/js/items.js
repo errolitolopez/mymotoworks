@@ -1,4 +1,4 @@
-// The Items page: everyone can look, the admin adds items (edit and deactivate come in feature C).
+// The Items page: everyone can search and look, the admin adds and changes items.
 
 const isAdmin = document.getElementById("items-main").dataset.admin === "true";
 
@@ -57,19 +57,66 @@ const itemRow = (item) => {
   return row;
 };
 
+const SEARCH_DELAY_MS = 300;
+
+const searchInput = document.getElementById("search");
+const lowOnly = document.getElementById("low-only");
+const pager = document.getElementById("pager");
+const pageLabel = document.getElementById("page-label");
+const prevButton = document.getElementById("prev-button");
+const nextButton = document.getElementById("next-button");
+
+let page = 1;
+let pages = 1;
+
+// itemsUrl() -> "/api/items?q=air+nmax&low=1&page=2" (from the search box, the switch and the page)
+const itemsUrl = () => {
+  const params = new URLSearchParams({ page });
+  if (searchInput.value.trim()) params.set("q", searchInput.value.trim());
+  if (lowOnly.checked) params.set("low", "1");
+  return `/api/items?${params}`;
+};
+
 const loadItems = async () => {
   try {
-    const response = await apiFetch("/api/items");
+    const response = await apiFetch(itemsUrl());
     if (!response) return;
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
     hideError("load-error");
+    page = data.page;
+    pages = data.pages;
     listBox.replaceChildren(...data.items.map(itemRow));
     emptyState.classList.toggle("d-none", data.items.length > 0);
+    pager.classList.toggle("d-none", pages < 2);
+    pageLabel.textContent = `Page ${page} of ${pages} · ${plural(data.total, "item")}`;
+    prevButton.disabled = page <= 1;
+    nextButton.disabled = page >= pages;
   } catch {
     showError("load-error", "Could not load the items.");
   }
 };
+
+// Searching or switching the filter starts again from page 1.
+const reloadFromStart = () => {
+  page = 1;
+  loadItems();
+};
+
+let searchTimer = null;
+searchInput.addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(reloadFromStart, SEARCH_DELAY_MS);
+});
+lowOnly.addEventListener("change", reloadFromStart);
+prevButton.addEventListener("click", () => {
+  page -= 1;
+  loadItems();
+});
+nextButton.addEventListener("click", () => {
+  page += 1;
+  loadItems();
+});
 
 if (isAdmin) {
   const itemForm = document.getElementById("item-form");

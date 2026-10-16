@@ -111,3 +111,81 @@ def test_items_page_for_admin_and_staff(admin):
 def test_items_page_needs_login(client):
     response = client.get("/items")
     assert response.status_code == 302 and response.headers["Location"].endswith("/login")
+
+
+def names(response):
+    return [row["name"] for row in items(response)]
+
+
+def test_search_matches_words_in_any_order_and_any_case(admin):
+    make_item(admin, name="AIR FILTER SUNTAL", model="NMAX V1", part_no="YA040D")
+    make_item(admin, name="AIR FILTER SUNTAL", model="MIO SOUL", part_no="YA040")
+    make_item(admin, name="SPARK PLUG NGK", model="", part_no="C7HSA")
+    assert len(items(admin.get("/api/items?q=air+nmax"))) == 1
+    assert len(items(admin.get("/api/items?q=NMAX AIR"))) == 1
+    assert len(items(admin.get("/api/items?q=air"))) == 2
+    assert names(admin.get("/api/items?q=c7hsa")) == ["SPARK PLUG NGK"]
+    assert items(admin.get("/api/items?q=nothing")) == []
+
+
+def test_search_treats_percent_and_underscore_as_plain_text(admin):
+    make_item(admin, name="OIL 10W-40")
+    assert items(admin.get("/api/items?q=%25")) == []
+    assert items(admin.get("/api/items?q=_")) == []
+    make_item(admin, name="50% OFF TAPE")
+    assert names(admin.get("/api/items?q=50%25")) == ["50% OFF TAPE"]
+
+
+def test_blank_search_lists_everything(admin):
+    make_item(admin)
+    assert len(items(admin.get("/api/items?q=+++"))) == 1
+
+
+def test_low_stock_filter(admin):
+    make_item(admin, name="LOW ONE", stock=1, reorder_level=2)
+    make_item(admin, name="EDGE", stock=2, reorder_level=2)
+    make_item(admin, name="FINE", stock=9, reorder_level=2)
+    make_item(admin, name="LINIS", track_stock=False)
+    assert names(admin.get("/api/items?low=1")) == ["EDGE", "LOW ONE"]
+    assert len(items(admin.get("/api/items"))) == 4
+
+
+def test_pages(admin):
+    add_items(120)
+    first = admin.get("/api/items").get_json()
+    assert first["total"] == 120 and first["pages"] == 3 and first["page"] == 1
+    assert len(first["items"]) == 50 and first["items"][0]["name"] == "ITEM 001"
+    last = admin.get("/api/items?page=3").get_json()
+    assert len(last["items"]) == 20 and last["items"][-1]["name"] == "ITEM 120"
+    assert admin.get("/api/items?page=99").get_json()["items"] == []
+    assert admin.get("/api/items?page=0").get_json()["page"] == 1
+    assert admin.get("/api/items?page=abc").get_json()["page"] == 1
+    assert len(admin.get("/api/items?per_page=10").get_json()["items"]) == 10
+    assert len(admin.get("/api/items?per_page=5000").get_json()["items"]) == 100  # capped
+
+
+def test_search_and_low_stock_work_together_with_pages(admin):
+    add_items(60)
+    db_execute("UPDATE items SET stock = 1 WHERE name LIKE 'ITEM 05%'")
+    data = admin.get("/api/items?q=item&low=1").get_json()
+    assert data["total"] == 10 and data["pages"] == 1
+
+
+def test_deactivated_items_are_hidden_for_staff_even_when_they_ask(admin):
+    make_item(admin, name="KEEP")
+    gone = make_item(admin, name="GONE")
+    db_execute("UPDATE items SET active = 0 WHERE id = ?", (gone["id"],))
+    staff = login("staff1")
+    assert names(staff.get("/api/items")) == ["KEEP"]
+    assert names(staff.get("/api/items?inactive=1")) == ["KEEP"]
+    assert names(admin.get("/api/items")) == ["KEEP"]
+    assert names(admin.get("/api/items?inactive=1")) == ["GONE", "KEEP"]
+
+
+def test_seed_command_adds_sample_items_once(app, admin):
+    runner = app.test_cli_runner()
+    assert runner.invoke(args=["seed"]).exit_code == 0
+    first = admin.get("/api/items?per_page=100").get_json()["total"]
+    assert first >= 100
+    assert runner.invoke(args=["seed"]).exit_code == 0
+    assert admin.get("/api/items?per_page=100").get_json()["total"] == first

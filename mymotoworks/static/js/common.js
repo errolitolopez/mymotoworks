@@ -108,3 +108,6 @@ const toCount = (text) => {
   if (value === "") return 0;
   return /^\d+$/.test(value) ? Number(value) : null;
 };
+
+// plural(1, "item") -> "1 item", plural(2, "activity", "activities") -> "2 activities"
+const plural = (count, one, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;

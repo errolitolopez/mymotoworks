@@ -18,3 +18,13 @@ def clean_text(value, label, max_length, required=True):
     if len(text) > max_length:
         raise ValidationError(f"{label} can be at most {max_length} characters.")
     return text
+
+
+MAX_SEARCH_WORDS = 6
+
+
+def search_words(text):
+    """"  air   NMAX " -> ["air", "NMAX"]. Each word must match, in any order, so "air nmax" finds
+    "AIR FILTER SUNTAL" for NMAX V1. More than MAX_SEARCH_WORDS words are cut, so a very long
+    search cannot make a very long query."""
+    return str(text or "").split()[:MAX_SEARCH_WORDS]

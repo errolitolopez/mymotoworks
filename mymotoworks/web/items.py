@@ -24,8 +24,16 @@ def page():
 @bp.get("/api/items")
 @login_required_api
 def api_list():
-    """?inactive=1 also lists deactivated items (admin only)."""
-    return jsonify(service().list(inactive=request.args.get("inactive") == "1"))
+    """?q= words to find, ?low=1 low stock only, ?inactive=1 also deactivated (admin only),
+    ?page= and ?per_page= (50 by default, at most 100). A bad number means the default."""
+    args = request.args
+    return jsonify(service().list(
+        query=args.get("q", ""),
+        low=args.get("low") == "1",
+        inactive=args.get("inactive") == "1",
+        page=args.get("page", 1, type=int),
+        per_page=args.get("per_page", ItemService.DEFAULT_PER_PAGE, type=int),
+    ))
 
 
 @bp.post("/api/items")
