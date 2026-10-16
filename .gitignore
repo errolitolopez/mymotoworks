@@ -3,8 +3,11 @@
 __pycache__/
 *.pyc
 
-# Private data: database and secret key
+# Private data: the database, its secret key, backups and the shop's Excel files must never be in git
 instance/
+backups/
+*.db
+*.xlsx
 
 # Editors / OS
 .vscode/

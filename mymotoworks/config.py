@@ -14,6 +14,12 @@ def shop_today():
     return datetime.now(SHOP_TIMEZONE).date()
 
 
+def is_production():
+    """True when the host asked for production behavior (MYMOTOWORKS_PRODUCTION=1 in its WSGI file). It is
+    never set on a developer's computer: its secure cookie would not work over plain http."""
+    return os.environ.get("MYMOTOWORKS_PRODUCTION") == "1"
+
+
 def configure(app, test_config=None):
     """Set the database path, secret key and cookie settings on the Flask app."""
     # The instance/ folder holds private files (database, secret key). It is not committed to git.
@@ -22,6 +28,10 @@ def configure(app, test_config=None):
         "MYMOTOWORKS_DATABASE", os.path.join(app.instance_path, "mymotoworks.db"))
     # No "remember me": the login ends when the browser is closed, since shop phones are shared.
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    if is_production():
+        # The site is served over https, so the login cookie may never travel over plain http.
+        app.config["SESSION_COOKIE_SECURE"] = True
+        app.config["PREFERRED_URL_SCHEME"] = "https"
     app.secret_key = load_secret_key(app.instance_path)
     if test_config:
         app.config.update(test_config)

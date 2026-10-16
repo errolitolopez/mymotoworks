@@ -35,6 +35,7 @@ mymotoworks/
   imports.py            reading the old spreadsheet, and the import-items command
   migrations.py         adds columns that older databases lack (runs on every start)
   exports.py            the Excel files of the reports
+  commands.py           console tools for the server's owner (set-password)
   web/                  Flask blueprints (pages + JSON API)
   templates/, static/   base.html, home.html, glass.css, theme.js
 tests/                  pytest suite
@@ -98,6 +99,18 @@ All under the **Stock** menu on the Items page.
   reason, the note, who and when. An item's ⋮ menu opens it filtered to that item.
 - Nothing is edited or deleted. A mistake is fixed with another adjustment the other way round. A
   double tap on Save changes the stock once.
+
+## Running online
+
+On a host (for example PythonAnywhere) the app needs one extra setting: the environment variable
+`MYMOTOWORKS_PRODUCTION=1`, set in the host's WSGI file (never on your own computer). It makes the login
+cookie `Secure` and makes the login lockout count the real visitor behind the host's proxy.
+
+    flask --app app set-password USERNAME     # asked twice, never shown; also the way back in after a forgotten password
+
+On a new server, create the database and set the admin password *before* the web app is started, so
+`admin` / `admin` is never reachable from the internet. The step-by-step runbook is `docs/mymotoworks/hosting.md`
+in the ProjectWorkspace docs. The shop's data (`instance/`, `*.db`, `*.xlsx`, `backups/`) is never in git.
 
 ## Reports (admin)
 
