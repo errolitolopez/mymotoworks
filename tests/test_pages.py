@@ -79,3 +79,9 @@ def test_the_sell_page_shows_the_item_list_with_a_filter_and_two_tabs(admin):
                     'id="panel-cart"'):
         assert element in html, element
     assert 'id="results"' not in html  # the old search-first results box is gone
+
+
+def test_the_sell_list_is_a_flat_list_in_its_own_scroll_box(admin):
+    html = page(login("staff1"), "/sell")
+    assert 'id="item-scroll"' in html and 'id="items-count"' in html
+    assert "item-scroll" in html.split('id="item-list"')[0].rsplit("<div", 1)[1]  # the list sits inside the box

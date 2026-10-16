@@ -158,17 +158,19 @@ body {
   }
 }
 
-/* The item groups on the Sell page: our own chevron turns when a group opens, so the browser's
-   default marker is hidden. */
-.group-summary {
-  cursor: pointer;
-  list-style: none;
+/* The item list on the Sell page scrolls inside its own box, so the page stays short. dvh (the visible
+   height, without the phone's browser bar) where it is known, vh before that. */
+.item-scroll {
+  max-height: 60vh;
+  max-height: 60dvh;
+  overflow-y: auto;
+  /* Rows keep their own panel color; the box only clips and scrolls. */
+  background-color: var(--glass-solid);
 }
 
-.group-summary::-webkit-details-marker {
-  display: none;
-}
-
-details[open] > .group-summary .group-chevron {
-  transform: rotate(90deg);
+@media (min-width: 768px) {
+  .item-scroll {
+    max-height: 70vh;
+    max-height: 70dvh;
+  }
 }

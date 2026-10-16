@@ -25,7 +25,11 @@
              aria-label="Filter the item list by name, model or part no." autocomplete="off">
       <div id="load-error" class="alert alert-danger py-2 d-none" role="alert"></div>
       <p id="items-status" class="text-body-secondary text-center py-3 mb-0">Loading items...</p>
-      <div id="item-list" class="list-group"></div>
+      <p id="items-count" class="small text-body-secondary mb-1"></p>
+      <!-- Only this box scrolls, so the filter, the tabs and the page itself stay where they are. -->
+      <div id="item-scroll" class="item-scroll border rounded-3">
+        <div id="item-list" class="list-group list-group-flush"></div>
+      </div>
       <p id="items-empty" class="text-body-secondary text-center py-3 d-none">No item matches. Check the spelling, or add the item on the Items page.</p>
     </section>
 

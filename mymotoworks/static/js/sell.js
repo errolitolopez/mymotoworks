@@ -4,6 +4,8 @@ const MAX_FILTER_WORDS = 6;
 
 const filterInput = document.getElementById("item-filter");
 const itemListBox = document.getElementById("item-list");
+const itemScroll = document.getElementById("item-scroll");
+const itemsCount = document.getElementById("items-count");
 const itemsStatus = document.getElementById("items-status");
 const itemsEmpty = document.getElementById("items-empty");
 const tabItems = document.getElementById("tab-items");
@@ -224,11 +226,11 @@ const stepperButton = (icon, label, style, onClick) => {
   return button;
 };
 
-// itemRow(item, inGroup) -> one row of the list: the name, model and part no., price and stock, and
+// itemRow(item) -> one row of the list: the name, model and part no., price and stock, and
 // a − 2 + stepper that adds or takes off one at a time
-const itemRow = (item, inGroup) => {
+const itemRow = (item) => {
   const row = document.createElement("div");
-  row.className = `item-row d-flex align-items-center gap-2 px-3 py-2 ${inGroup ? "border-top" : "list-group-item"}`;
+  row.className = "item-row list-group-item d-flex align-items-center gap-2 px-3 py-2";
 
   const info = document.createElement("div");
   info.className = "min-w-0 flex-grow-1";
@@ -263,67 +265,15 @@ const itemRow = (item, inGroup) => {
   return row;
 };
 
-// groupKey({name: "BRAKE PAD REAR"}) -> "BRAKE" (the first word of the name). Items sharing it are listed under
-// one line, so a few hundred items make a short page. The list is already sorted by name.
-const groupKey = (item) => item.name.trim().split(/\s+/)[0].toUpperCase();
-
-// The groups the person opened by hand. Kept here because the list is drawn again after every tap.
-const openGroups = new Set();
-
-// groupLine(key, items, forceOpen) -> a closed-at-first line "BRAKE (29)" that opens to show its rows
-const groupLine = (key, items, forceOpen) => {
-  const details = document.createElement("details");
-  details.className = "list-group-item p-0";
-  details.open = forceOpen || openGroups.has(key);
-  const summary = document.createElement("summary");
-  summary.className = "group-summary d-flex align-items-center gap-2 px-3 py-2";
-  const chevron = document.createElement("span");
-  chevron.className = "bi bi-chevron-right group-chevron flex-shrink-0";
-  chevron.setAttribute("aria-hidden", "true");
-  const title = document.createElement("span");
-  title.className = "fw-semibold flex-grow-1";
-  title.textContent = key;
-  const total = document.createElement("span");
-  total.className = "text-body-secondary";
-  total.textContent = `(${items.length})`;
-  summary.append(chevron, title, total);
-  const inGroup = items.reduce((sum, item) => sum + inCart(item), 0);
-  if (inGroup > 0) {
-    const mark = document.createElement("span");
-    mark.className = "badge text-bg-primary";
-    mark.textContent = `×${inGroup}`;
-    summary.append(mark);
-  }
-  // The click runs before the browser opens or closes the group, so the new state is the opposite.
-  summary.addEventListener("click", () => {
-    if (details.open) {
-      openGroups.delete(key);
-    } else {
-      openGroups.add(key);
-    }
-  });
-  details.append(summary, ...items.map((item) => itemRow(item, true)));
-  return details;
-};
-
-// renderList() -> draws the items that match the filter box: a group line per first word (closed at
-// first), or the row itself for an item that is alone in its group. While filtering, groups are open.
+// renderList() -> draws the items that match the filter box (all of them when it is empty), and says
+// how many. Drawing again after a tap keeps the scroll position, because the box keeps its size.
 const renderList = () => {
   const words = filterWords();
   const shown = allItems.filter((item) => matches(item, words));
-  const groups = [];
-  shown.forEach((item) => {
-    const key = groupKey(item);
-    const last = groups[groups.length - 1];
-    if (last && last.key === key) {
-      last.items.push(item);
-    } else {
-      groups.push({ key, items: [item] });
-    }
-  });
-  itemListBox.replaceChildren(...groups.map((group) =>
-    group.items.length === 1 ? itemRow(group.items[0], false) : groupLine(group.key, group.items, words.length > 0)));
+  itemListBox.replaceChildren(...shown.map(itemRow));
   itemsEmpty.classList.toggle("d-none", shown.length > 0 || allItems.length === 0);
+  itemsCount.textContent = allItems.length === 0 ? ""
+    : words.length === 0 ? plural(allItems.length, "item") : `${shown.length} of ${plural(allItems.length, "item")}`;
   return shown;
 };
 
@@ -344,7 +294,10 @@ const loadItems = async () => {
   }
 };
 
-filterInput.addEventListener("input", renderList);
+filterInput.addEventListener("input", () => {
+  renderList();
+  itemScroll.scrollTop = 0; // a new filter shows its first match, not the middle of the old list
+});
 // Enter adds the item when only one is left: quick for a typed or scanned code.
 filterInput.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;
