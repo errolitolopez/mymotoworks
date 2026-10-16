@@ -95,3 +95,24 @@ def admin():
                            json={"current_password": "admin", "new_password": ADMIN_PASSWORD})
     assert response.status_code == 200, response.get_json()
     return client
+
+
+def make_item(admin, **fields):
+    """Add an item through the API and return its JSON."""
+    data = {"name": "AIR FILTER SUNTAL", "model": "MIOi125 M3", "part_no": "YA040A",
+            "puhunan": 10350, "benta": 15000, "stock": 3, "reorder_level": 2, "track_stock": True, **fields}
+    response = admin.post("/api/items", json=data)
+    assert response.status_code == 201, response.get_json()
+    return response.get_json()["item"]
+
+
+def add_items(count):
+    """Many items straight into the test database (faster than the API), named ITEM 001, ITEM 002, ..."""
+    with flask_app.app_context():
+        db = get_db()
+        db.executemany(
+            "INSERT INTO items (name, model, part_no, puhunan, benta, stock, reorder_level, track_stock, active) "
+            "VALUES (?, '', '', 1000, 2000, 5, 2, 1, 1)",
+            [(f"ITEM {number:03d}",) for number in range(1, count + 1)],
+        )
+        db.commit()

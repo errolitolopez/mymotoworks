@@ -87,3 +87,24 @@ if (copyDetailsButton) {
     setTimeout(() => (copyDetailsButton.textContent = " Copy"), 1500);
   });
 }
+
+// pesos(10350) -> "103.50", pesos(123456700) -> "1,234,567.00"
+const pesos = (centavos) =>
+  (centavos / 100).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// toCentavos("103.5") -> 10350, toCentavos("") -> 0, toCentavos("abc") -> null (not an amount)
+// Typed pesos are read as text, never as a float, so 0.1 + 0.2 style errors cannot creep in.
+const toCentavos = (text) => {
+  const value = text.trim();
+  if (value === "") return 0;
+  if (!/^\d+(\.\d{1,2})?$/.test(value)) return null;
+  const [whole, fraction = ""] = value.split(".");
+  return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+};
+
+// toCount("12") -> 12, toCount("") -> 0, toCount("1.5") -> null (not a whole number)
+const toCount = (text) => {
+  const value = text.trim();
+  if (value === "") return 0;
+  return /^\d+$/.test(value) ? Number(value) : null;
+};

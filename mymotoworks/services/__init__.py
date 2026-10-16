@@ -3,5 +3,6 @@ user, checks the request with the domain rules, uses the repositories, and commi
 
 from mymotoworks.services.accounts import AccountService
 from mymotoworks.services.auth import AuthService, LoginThrottle
+from mymotoworks.services.items import ItemService
 
-__all__ = ["AccountService", "AuthService", "LoginThrottle"]
+__all__ = ["AccountService", "AuthService", "ItemService", "LoginThrottle"]

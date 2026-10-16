@@ -1,0 +1,62 @@
+<div class="modal fade" id="item-modal" tabindex="-1" aria-labelledby="item-modal-title" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" id="item-form" novalidate>
+      <div class="modal-header">
+        <h2 class="modal-title fs-5" id="item-modal-title">Add item</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="item-name" class="form-label">Item name</label>
+          <input id="item-name" type="text" class="form-control" maxlength="120" autocomplete="off" required>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label for="item-model" class="form-label">Model <span class="text-body-secondary">(optional)</span></label>
+            <input id="item-model" type="text" class="form-control" maxlength="60" autocomplete="off">
+          </div>
+          <div class="col-6">
+            <label for="item-part-no" class="form-label">Part no. <span class="text-body-secondary">(optional)</span></label>
+            <input id="item-part-no" type="text" class="form-control" maxlength="60" autocomplete="off">
+          </div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label for="item-puhunan" class="form-label">Puhunan (cost)</label>
+            <div class="input-group">
+              <span class="input-group-text">₱</span>
+              <input id="item-puhunan" type="text" inputmode="decimal" class="form-control" autocomplete="off">
+            </div>
+          </div>
+          <div class="col-6">
+            <label for="item-benta" class="form-label">Benta (price)</label>
+            <div class="input-group">
+              <span class="input-group-text">₱</span>
+              <input id="item-benta" type="text" inputmode="decimal" class="form-control" autocomplete="off" required>
+            </div>
+          </div>
+        </div>
+        <div class="form-check form-switch mb-3">
+          <input id="item-track-stock" type="checkbox" class="form-check-input" role="switch" checked>
+          <label for="item-track-stock" class="form-check-label">Count stock for this item</label>
+          <div class="form-text">Turn off for services and loose items such as LINIS or GRASA.</div>
+        </div>
+        <div class="row g-3 mb-3" id="stock-group">
+          <div class="col-6" id="stock-field">
+            <label for="item-stock" class="form-label">Stock now</label>
+            <input id="item-stock" type="text" inputmode="numeric" class="form-control" autocomplete="off">
+          </div>
+          <div class="col-6">
+            <label for="item-reorder" class="form-label">Re-order at</label>
+            <input id="item-reorder" type="text" inputmode="numeric" class="form-control" autocomplete="off">
+          </div>
+        </div>
+        <div id="form-error" class="alert alert-danger py-2 d-none" role="alert"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary bi bi-x-lg" data-bs-dismiss="modal"> Cancel</button>
+        <button id="save-button" type="submit" class="btn btn-primary bi bi-check-lg"> Save</button>
+      </div>
+    </form>
+  </div>
+</div>
