@@ -28,3 +28,23 @@ class UserRepository(Repository):
     def set_password(self, user_id, password_hash, must_change_password):
         self.execute("UPDATE users SET password_hash = ?, must_change_password = ? WHERE id = ?",
                      (password_hash, 1 if must_change_password else 0, user_id))
+
+    def get(self, user_id):
+        return self.one("SELECT * FROM users WHERE id = ?", (user_id,))
+
+    def username_taken(self, username):
+        return self.one("SELECT 1 FROM users WHERE username = ?", (username,)) is not None
+
+    def search(self, pattern):
+        """Users whose name or username contains the text (pattern from like_pattern), by name."""
+        return self.all(
+            "SELECT * FROM users WHERE name LIKE ? ESCAPE '\\' OR username LIKE ? ESCAPE '\\' "
+            "ORDER BY name COLLATE NOCASE, username",
+            (pattern, pattern),
+        )
+
+    def set_name(self, user_id, name):
+        self.execute("UPDATE users SET name = ? WHERE id = ?", (name, user_id))
+
+    def set_active(self, user_id, active):
+        self.execute("UPDATE users SET active = ? WHERE id = ?", (1 if active else 0, user_id))

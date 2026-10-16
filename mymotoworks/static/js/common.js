@@ -61,3 +61,29 @@ if (logoutButton) {
     window.location.href = "/login";
   });
 }
+
+// showLoginDetails({name, username}, "k3m9x2pq7a") -> opens the popup (templates/_login_details_modal.html)
+// that shows a new account's or a reset password once.
+const showLoginDetails = (user, password) => {
+  document.getElementById("details-name").textContent = user.name;
+  document.getElementById("details-username").textContent = user.username;
+  document.getElementById("details-password").textContent = password;
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("login-details-modal")).show();
+};
+
+const copyDetailsButton = document.getElementById("copy-details-button");
+if (copyDetailsButton) {
+  copyDetailsButton.addEventListener("click", async () => {
+    const text =
+      `mymotoworks login\n` +
+      `Username: ${document.getElementById("details-username").textContent}\n` +
+      `Password: ${document.getElementById("details-password").textContent}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      copyDetailsButton.textContent = "Copied!";
+    } catch {
+      copyDetailsButton.textContent = "Can't copy";
+    }
+    setTimeout(() => (copyDetailsButton.textContent = " Copy"), 1500);
+  });
+}

@@ -28,7 +28,9 @@ mymotoworks/
   errors.py             ValidationError / NotFoundError / ... -> JSON {"error": ...}
   database.py           connection per request, init-db, default admin
   schema.sql            the tables
+  domain/               rules with no Flask or SQL (account rules, text helpers)
   repositories/         all SQL, one class per kind of data; they never commit
+  services/             use cases (auth, accounts); they check roles and commit
   web/                  Flask blueprints (pages + JSON API)
   templates/, static/   base.html, home.html, glass.css, theme.js
 tests/                  pytest suite
@@ -37,8 +39,13 @@ tests/                  pytest suite
 Each layer only uses the ones below it: web → services → repositories / domain.
 A route reads the request, calls a service, and returns JSON; a service raises
 `ValidationError("...")` (or `NotFoundError`, ...) and the error becomes `{"error": "..."}`
-with the right status, with nothing saved. (`services/` and `domain/` come with the first
-features that need them.)
+with the right status, with nothing saved. 
 
-The default admin is `admin` / `admin`, created on the first start. Login and the forced
-password change come in the next task.
+## Roles
+
+- **admin**: the owner. Everything, including the Users page. The default account is `admin` / `admin`,
+  created on the first start; its password must be changed at the first login.
+- **staff**: records sales and cash-outs and views items. Never sees cost or profit.
+
+There is no sign-up: the admin creates all accounts and gives each person a temporary password,
+shown once. Five wrong passwords lock that username on that device for five minutes.

@@ -1,0 +1,34 @@
+<div class="modal fade" id="user-modal" tabindex="-1" aria-labelledby="user-modal-title" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" id="user-form" novalidate>
+      <div class="modal-header">
+        <h2 class="modal-title fs-5" id="user-modal-title">Add account</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="user-name" class="form-label">Name</label>
+          <input id="user-name" type="text" class="form-control" maxlength="100" autocomplete="off" required>
+        </div>
+        <div class="mb-3" id="username-group">
+          <label for="user-username" class="form-label">Username</label>
+          <input id="user-username" type="text" class="form-control" maxlength="30" autocapitalize="none"
+                 autocomplete="off" required>
+          <div class="form-text">Letters, numbers, dots, dashes or underscores (3 to 30).</div>
+        </div>
+        <div class="mb-3" id="role-group">
+          <label for="user-role" class="form-label">Role</label>
+          <select id="user-role" class="form-select">
+            <option value="staff">Staff: records sales and cash-outs</option>
+            <option value="admin">Admin: everything</option>
+          </select>
+        </div>
+        <div id="form-error" class="alert alert-danger py-2 d-none" role="alert"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary bi bi-x-lg" data-bs-dismiss="modal"> Cancel</button>
+        <button id="save-button" type="submit" class="btn btn-primary bi bi-check-lg"> Save</button>
+      </div>
+    </form>
+  </div>
+</div>

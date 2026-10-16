@@ -1,0 +1,23 @@
+<div class="modal fade" id="login-details-modal" tabindex="-1" aria-labelledby="details-title" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title fs-5" id="details-title">Login details</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-body-secondary">Give these to <strong id="details-name"></strong>. The password is shown only now. They must choose their own when they first log in.</p>
+        <dl class="mb-0">
+          <dt>Username</dt>
+          <dd id="details-username"></dd>
+          <dt>Temporary password</dt>
+          <dd class="font-monospace fs-5 mb-0" id="details-password"></dd>
+        </dl>
+      </div>
+      <div class="modal-footer">
+        <button id="copy-details-button" type="button" class="btn btn-outline-secondary bi bi-clipboard"> Copy</button>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Done</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -2,6 +2,6 @@
 request, calls a service, and returns JSON or a page; errors from services become JSON answers
 (mymotoworks.errors)."""
 
-from mymotoworks.web import auth, dashboard
+from mymotoworks.web import accounts, auth, dashboard
 
-BLUEPRINTS = [auth.bp, dashboard.bp]
+BLUEPRINTS = [auth.bp, dashboard.bp, accounts.bp]

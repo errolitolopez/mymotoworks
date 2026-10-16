@@ -13,6 +13,12 @@
         <a class="nav-link {{ 'active' if request.endpoint == 'dashboard.page' }}"
            href="{{ url_for('dashboard.page') }}">Home</a>
       </li>
+      {% if user.role == "admin" %}
+      <li class="nav-item">
+        <a class="nav-link {{ 'active' if request.endpoint == 'accounts.page' }}"
+           href="{{ url_for('accounts.page') }}">Users</a>
+      </li>
+      {% endif %}
     </ul>
   </div>
 </nav>

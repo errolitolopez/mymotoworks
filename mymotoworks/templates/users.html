@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Users · mymotoworks{% endblock %}
+
+{% block content %}
+{% include "_navbar.html" %}
+<main class="container py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0">Users</h1>
+    <button id="add-button" type="button" class="btn btn-primary bi bi-person-plus"> Add account</button>
+  </div>
+
+  <input id="search" type="search" class="form-control mb-3" placeholder="Search name or username"
+         aria-label="Search name or username" autocomplete="off">
+
+  <div id="load-error" class="alert alert-danger py-2 d-none" role="alert"></div>
+  <div id="user-list" class="list-group"></div>
+  <p id="empty-state" class="text-body-secondary text-center py-4 d-none">No accounts found.</p>
+</main>
+
+{% include "_user_modal.html" %}
+{% include "_login_details_modal.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/users.js') }}"></script>
+{% endblock %}

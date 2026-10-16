@@ -2,7 +2,7 @@
 
 from functools import wraps
 
-from flask import g, redirect, request, session, url_for
+from flask import g, jsonify, redirect, request, session, url_for
 
 from mymotoworks.database import get_db
 from mymotoworks.repositories import UserRepository
@@ -39,3 +39,42 @@ def login_required_page(view):
             return redirect(url_for("auth.change_password_page"))
         return view(*args, **kwargs)
     return wrapper
+
+
+def login_required_api(view):
+    """For API routes: answer 401 if not logged in, 403 if the password must be changed first."""
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        user = current_user()
+        if user is None:
+            return jsonify(error="Please log in."), 401
+        if user["must_change_password"]:
+            return jsonify(error="Please change your password first.", must_change_password=True), 403
+        return view(*args, **kwargs)
+    return wrapper
+
+
+def role_required_page(*roles):
+    """For HTML pages only some roles may open: others are sent back to the home page."""
+    def decorator(view):
+        @wraps(view)
+        @login_required_page
+        def wrapper(*args, **kwargs):
+            if current_user()["role"] not in roles:
+                return redirect(url_for("dashboard.page"))
+            return view(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def role_required_api(*roles):
+    """For API routes only some roles may use: others get 403."""
+    def decorator(view):
+        @wraps(view)
+        @login_required_api
+        def wrapper(*args, **kwargs):
+            if current_user()["role"] not in roles:
+                return jsonify(error="You don't have access to this."), 403
+            return view(*args, **kwargs)
+        return wrapper
+    return decorator
