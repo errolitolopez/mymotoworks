@@ -10,6 +10,7 @@ Layers (each only uses the ones below it):
 from flask import Flask
 
 from mymotoworks import config, database
+from mymotoworks.errors import register_error_handlers
 from mymotoworks.web import BLUEPRINTS
 
 
@@ -18,6 +19,7 @@ def create_app(test_config=None):
     config.configure(app, test_config)
 
     database.init_app(app)
+    register_error_handlers(app)
     for blueprint in BLUEPRINTS:
         app.register_blueprint(blueprint)
 
