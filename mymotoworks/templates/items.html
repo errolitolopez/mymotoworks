@@ -18,7 +18,9 @@
     {% endif %}
   </div>
 
-  <div class="row g-2 align-items-center mb-3">
+  <!-- Stays at the top while the list scrolls, so searching never needs a scroll back up. -->
+  <div class="sticky-top bg-body py-2 mb-2">
+   <div class="row g-2 align-items-center">
     <div class="col-12 col-sm">
       <input id="search" type="search" class="form-control" placeholder="Search name, model or part no."
              aria-label="Search name, model or part no." autocomplete="off">
@@ -29,16 +31,17 @@
         <label for="low-only" class="form-check-label">Low stock only</label>
       </div>
     </div>
+   </div>
   </div>
 
   <div id="load-error" class="alert alert-danger py-2 d-none" role="alert"></div>
   <div id="item-list" class="list-group"></div>
   <p id="empty-state" class="text-body-secondary text-center py-4 d-none">No items found.</p>
 
-  <div id="pager" class="d-flex justify-content-between align-items-center mt-3 d-none">
-    <button id="prev-button" type="button" class="btn btn-outline-secondary btn-sm bi bi-chevron-left"> Prev</button>
+  <div id="pager" class="d-flex justify-content-between align-items-center gap-2 mt-3 d-none">
+    <button id="prev-button" type="button" class="btn btn-outline-secondary bi bi-chevron-left"> Prev</button>
     <span id="page-label" class="small text-body-secondary"></span>
-    <button id="next-button" type="button" class="btn btn-outline-secondary btn-sm bi bi-chevron-right"> Next</button>
+    <button id="next-button" type="button" class="btn btn-outline-secondary bi bi-chevron-right"> Next</button>
   </div>
 </main>
 

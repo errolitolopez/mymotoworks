@@ -65,3 +65,93 @@ body {
 .preload * {
   transition: none !important;
 }
+
+/* ---- Mobile first: the phone layout is the base; wider screens add to it ---- */
+
+.min-w-0 {
+  /* Lets a long item name wrap inside a flex row instead of pushing the row wider than the screen. */
+  min-width: 0;
+}
+
+/* The bottom tab bar. Opaque, so page content never shows through it. d-md-none (Bootstrap) hides
+   it from 768px up. */
+.tabbar {
+  position: fixed;
+  inset: auto 0 0 0;
+  /* Above sticky headers (1020), below dropdowns and modals. */
+  z-index: 1030;
+  display: flex;
+  background-color: var(--glass-solid);
+  border-top: 1px solid var(--glass-border);
+  /* The iPhone home bar area. Needs viewport-fit=cover in base.html. */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tab-link {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  min-height: 3.5rem;
+  color: var(--bs-secondary-color);
+  text-decoration: none;
+  font-size: 0.75rem;
+}
+
+.tab-link .bi {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.tab-link.active {
+  color: var(--bs-primary);
+  font-weight: 600;
+}
+
+@media (max-width: 767.98px) {
+  /* Room for the bar, so the last row of a page is never hidden behind it. */
+  body:has(.tabbar) {
+    padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+  }
+
+  /* Thumb-sized targets (about 44px). Bootstrap's own variables, not new selectors. */
+  .btn {
+    --bs-btn-padding-y: 0.6rem;
+    --bs-btn-padding-x: 1rem;
+    min-height: 2.75rem;
+  }
+
+  .btn-sm {
+    --bs-btn-padding-y: 0.5rem;
+    --bs-btn-padding-x: 0.75rem;
+    --bs-btn-font-size: 0.9rem;
+  }
+
+  .form-control,
+  .form-select {
+    min-height: 2.75rem;
+  }
+
+  .dropdown-item {
+    padding-top: 0.7rem;
+    padding-bottom: 0.7rem;
+  }
+
+  .form-check-input {
+    width: 1.4em;
+    height: 1.4em;
+  }
+
+  .form-switch .form-check-input {
+    width: 2.5em;
+  }
+}
+
+@media (max-width: 575.98px) {
+  /* Full-screen forms use the visible height, so Save is not hidden under the browser bar. */
+  .modal-fullscreen-sm-down {
+    height: 100dvh;
+  }
+}

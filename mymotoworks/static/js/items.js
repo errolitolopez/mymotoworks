@@ -21,16 +21,6 @@ const textLine = (text) => {
   return line;
 };
 
-// smallButton("bi-pencil", "Edit", handler) -> a small outline button with an icon and a label
-const smallButton = (icon, label, onClick) => {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = `btn btn-outline-secondary btn-sm bi ${icon}`;
-  button.textContent = ` ${label}`;
-  button.addEventListener("click", () => onClick(button));
-  return button;
-};
-
 // Set below, for the admin: opens the form to edit an item.
 let openFormForEdit = () => {};
 
@@ -62,11 +52,12 @@ const toggleActive = async (item, button) => {
 // itemRow({name, model, part_no, benta, stock, ...}) -> one list row
 const itemRow = (item) => {
   const row = document.createElement("div");
-  row.className = "list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2";
+  row.className = "list-group-item d-flex align-items-start gap-2";
 
   const info = document.createElement("div");
+  info.className = "flex-grow-1 min-w-0";
   const name = document.createElement("div");
-  name.className = "fw-semibold";
+  name.className = "fw-semibold text-break";
   name.textContent = item.name;
   if (!item.active) name.append(" ", badge("Deactivated", "text-bg-danger"));
   info.append(name);
@@ -76,7 +67,7 @@ const itemRow = (item) => {
   if (isAdmin) info.append(textLine(`Puhunan ₱${pesos(item.puhunan)} · Tubo ₱${pesos(item.tubo)}`));
 
   const numbers = document.createElement("div");
-  numbers.className = "text-end";
+  numbers.className = "text-end flex-shrink-0";
   const price = document.createElement("div");
   price.className = "fw-semibold";
   price.textContent = `₱${pesos(item.benta)}`;
@@ -94,14 +85,11 @@ const itemRow = (item) => {
 
   row.append(info, numbers);
   if (isAdmin) {
-    const actions = document.createElement("div");
-    actions.className = "d-flex gap-2";
-    actions.append(
-      smallButton("bi-pencil", "Edit", () => openFormForEdit(item)),
-      smallButton(item.active ? "bi-slash-circle" : "bi-check-circle", item.active ? "Deactivate" : "Activate",
-        (button) => toggleActive(item, button)),
-    );
-    row.append(actions);
+    row.append(actionMenu([
+      { icon: "bi-pencil", label: "Edit", onClick: () => openFormForEdit(item) },
+      { icon: item.active ? "bi-slash-circle" : "bi-check-circle", label: item.active ? "Deactivate" : "Activate",
+        onClick: (trigger) => toggleActive(item, trigger) },
+    ]));
   }
   return row;
 };

@@ -111,3 +111,31 @@ const toCount = (text) => {
 
 // plural(1, "item") -> "1 item", plural(2, "activity", "activities") -> "2 activities"
 const plural = (count, one, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
+
+// actionMenu([{icon: "bi-pencil", label: "Edit", onClick: (trigger) => ...}]) -> a "⋮" button that
+// opens a menu of actions: one compact button per row instead of several, so rows stay short on a
+// phone. onClick gets the "⋮" button so it can show the spinner there (the menu closes on click).
+const actionMenu = (actions) => {
+  const wrapper = document.createElement("div");
+  wrapper.className = "dropdown flex-shrink-0";
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "btn btn-outline-secondary bi bi-three-dots-vertical";
+  trigger.setAttribute("data-bs-toggle", "dropdown");
+  trigger.setAttribute("aria-expanded", "false");
+  trigger.setAttribute("aria-label", "Actions");
+  const menu = document.createElement("ul");
+  menu.className = "dropdown-menu dropdown-menu-end";
+  actions.forEach(({ icon, label, onClick }) => {
+    const item = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `dropdown-item bi ${icon}`;
+    button.textContent = ` ${label}`;
+    button.addEventListener("click", () => onClick(trigger));
+    item.append(button);
+    menu.append(item);
+  });
+  wrapper.append(trigger, menu);
+  return wrapper;
+};

@@ -17,16 +17,6 @@ let editingId = null; // null while adding a new account
 // roleLabel("staff") -> "Staff"
 const roleLabel = (role) => (role === "admin" ? "Admin" : "Staff");
 
-// smallButton("bi-pencil", "Edit", handler) -> a small outline button with an icon and a label
-const smallButton = (icon, label, onClick) => {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = `btn btn-outline-secondary btn-sm bi ${icon}`;
-  button.textContent = ` ${label}`;
-  button.addEventListener("click", () => onClick(button));
-  return button;
-};
-
 // badge("Admin", "text-bg-dark") -> <span class="badge text-bg-dark">Admin</span>
 const badge = (text, style) => {
   const element = document.createElement("span");
@@ -78,11 +68,12 @@ const toggleActive = async (user, button) => {
 // userRow({name: "Maria", username: "maria", role: "staff", active: true, ...}) -> one list row
 const userRow = (user) => {
   const row = document.createElement("div");
-  row.className = "list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2";
+  row.className = "list-group-item d-flex align-items-start gap-2";
 
   const info = document.createElement("div");
+  info.className = "flex-grow-1 min-w-0";
   const name = document.createElement("div");
-  name.className = "fw-semibold";
+  name.className = "fw-semibold text-break";
   name.textContent = user.name;
   const details = document.createElement("div");
   details.className = "small text-body-secondary d-flex flex-wrap align-items-center gap-2";
@@ -93,15 +84,12 @@ const userRow = (user) => {
   if (user.active && user.must_change_password) details.append(badge("Temporary password", "text-bg-warning"));
   info.append(name, details);
 
-  const actions = document.createElement("div");
-  actions.className = "d-flex flex-wrap gap-2";
-  actions.append(
-    smallButton("bi-pencil", "Edit", () => openForm(user)),
-    smallButton("bi-key", "Reset password", (button) => resetPassword(user, button)),
-    smallButton(user.active ? "bi-person-x" : "bi-person-check", user.active ? "Deactivate" : "Activate",
-      (button) => toggleActive(user, button)),
-  );
-  row.append(info, actions);
+  row.append(info, actionMenu([
+    { icon: "bi-pencil", label: "Edit", onClick: () => openForm(user) },
+    { icon: "bi-key", label: "Reset password", onClick: (trigger) => resetPassword(user, trigger) },
+    { icon: user.active ? "bi-person-x" : "bi-person-check", label: user.active ? "Deactivate" : "Activate",
+      onClick: (trigger) => toggleActive(user, trigger) },
+  ]));
   return row;
 };
 
