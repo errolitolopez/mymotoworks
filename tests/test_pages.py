@@ -67,3 +67,7 @@ def test_staff_filter_panel_has_low_stock_but_no_deactivated_switch():
     panel = html.split('id="filter-panel"')[1].split("</main>")[0]
     assert 'id="low-only"' in panel
     assert "show-inactive" not in html
+
+
+def test_items_search_and_filter_do_not_float(admin):
+    assert "sticky" not in page(admin, "/items")

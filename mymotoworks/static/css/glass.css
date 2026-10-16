@@ -6,7 +6,6 @@
   --glass-border: rgba(226, 232, 240, 0.8);
   --glass-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
   --glass-blur: blur(12px);
-  --glass-bg-strong: rgba(255, 255, 255, 0.88);
   --glass-solid: #fff;
   /* A soft white-to-light-blue page instead of gray. */
   --page-base: #f4f8ff;
@@ -17,7 +16,6 @@
   --glass-bg: rgba(15, 23, 42, 0.6);
   --glass-border: rgba(51, 65, 85, 0.8);
   --glass-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
-  --glass-bg-strong: rgba(15, 23, 42, 0.9);
   --glass-solid: #1e293b;
   --page-base: #0f172a;
   --page-gradient: radial-gradient(circle at top left, hsl(222 47% 15%), hsl(222 47% 11%));
@@ -81,7 +79,7 @@ body {
 .tabbar {
   position: fixed;
   inset: auto 0 0 0;
-  /* Above sticky headers (1020), below dropdowns and modals. */
+  /* Above page content, below dropdowns (1000 is for page-level ones) and modals (1055). */
   z-index: 1030;
   display: flex;
   background-color: var(--glass-solid);
@@ -156,20 +154,5 @@ body {
   /* Full-screen forms use the visible height, so Save is not hidden under the browser bar. */
   .modal-fullscreen-sm-down {
     height: 100dvh;
-  }
-}
-
-/* The pinned search area on the Items page: the same frosted glass as the panels, so it does not
-   show as a flat block, and the list blurs softly behind it as it scrolls. One panel only, never
-   per row (blur is slow on phones). */
-.sticky-toolbar {
-  background-color: var(--glass-bg-strong);
-  backdrop-filter: var(--glass-blur);
-  border-radius: 0 0 1rem 1rem;
-}
-
-@supports not (backdrop-filter: blur(1px)) {
-  .sticky-toolbar {
-    background-color: var(--glass-solid);
   }
 }
