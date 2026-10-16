@@ -2,6 +2,16 @@
 
 import os
 import secrets
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+# Shop days are calendar days in the shop's time zone, wherever the server runs.
+SHOP_TIMEZONE = ZoneInfo("Asia/Manila")
+
+
+def shop_today():
+    """Today's date at the shop."""
+    return datetime.now(SHOP_TIMEZONE).date()
 
 
 def configure(app, test_config=None):

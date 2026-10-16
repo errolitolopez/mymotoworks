@@ -35,3 +35,35 @@ CREATE TABLE IF NOT EXISTS items (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- One row per customer. Never deleted: a wrong sale is voided, so history stays correct.
+CREATE TABLE IF NOT EXISTS sales (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sale_date TEXT NOT NULL,                 -- YYYY-MM-DD, the shop's day
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    total INTEGER NOT NULL,                  -- centavos
+    -- Made by the phone for each cart, so a double tap or a retry saves only once.
+    client_ref TEXT UNIQUE,
+    voided_at TEXT,
+    voided_by INTEGER REFERENCES users(id),
+    void_reason TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_sales_date ON sales (sale_date);
+
+-- The name and prices are copied when the sale is saved, so changing an item later never changes
+-- an old sale.
+CREATE TABLE IF NOT EXISTS sale_lines (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sale_id INTEGER NOT NULL REFERENCES sales(id),
+    item_id INTEGER NOT NULL REFERENCES items(id),
+    item_name TEXT NOT NULL,
+    qty INTEGER NOT NULL CHECK (qty > 0),
+    puhunan INTEGER NOT NULL,
+    benta INTEGER NOT NULL,
+    -- 1 when this line lowered the item's stock, so a void puts back exactly that
+    tracked INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sale_lines_sale ON sale_lines (sale_id);

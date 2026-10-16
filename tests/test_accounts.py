@@ -29,7 +29,7 @@ def test_staff_cannot_use_the_users_api_or_page():
     assert staff.post("/api/users", json={}).status_code == 403
     assert staff.put("/api/users/1", json={"active": False}).status_code == 403
     page = staff.get("/users")
-    assert page.status_code == 302 and page.headers["Location"].endswith("/dashboard")
+    assert page.status_code == 302 and page.headers["Location"].endswith("/sell")
 
 
 def test_logged_out_visitor_gets_401_and_login_redirect(client):

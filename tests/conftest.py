@@ -137,3 +137,9 @@ def make_workbook(path, rows, headings=None, sheet="STOCK INVENTORY"):
         worksheet.append([name, model, part_no, puhunan, benta, 99, None, 7, remaining, None])
     workbook.save(path)
     return str(path)
+
+
+def db_query(sql, params=()):
+    """Read rows straight from the test database."""
+    with flask_app.app_context():
+        return [dict(row) for row in get_db().execute(sql, params).fetchall()]

@@ -26,7 +26,7 @@ form.addEventListener("submit", async (event) => {
     });
     const data = await response.json();
     if (response.ok) {
-      window.location.href = data.must_change_password ? "/change-password" : "/dashboard";
+      window.location.href = data.must_change_password ? "/change-password" : data.home;
       return;
     }
     // Only clear the password after a failed login: on success the browser reads it from the

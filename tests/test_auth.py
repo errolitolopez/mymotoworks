@@ -67,8 +67,8 @@ def test_home_pages_send_a_visitor_to_login(client):
 
 def test_logged_in_user_skips_the_login_page():
     staff = login("staff1")
-    assert staff.get("/login").headers["Location"].endswith("/dashboard")
-    assert staff.get("/").headers["Location"].endswith("/dashboard")
+    assert staff.get("/login").headers["Location"].endswith("/sell")
+    assert staff.get("/").headers["Location"].endswith("/sell")
 
 
 def test_logout_ends_the_session():

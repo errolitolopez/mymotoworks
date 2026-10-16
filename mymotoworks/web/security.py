@@ -27,6 +27,11 @@ def json_body():
     return data if isinstance(data, dict) else {}
 
 
+def home_endpoint(user):
+    """Where a user lands: the admin on Home, staff on the Sell page."""
+    return "dashboard.page" if user["role"] == "admin" else "sales.sell_page"
+
+
 def login_required_page(view):
     """For HTML pages: send the user to the login page if not logged in,
     or to the change password page if they still have a temporary password."""
@@ -61,7 +66,7 @@ def role_required_page(*roles):
         @login_required_page
         def wrapper(*args, **kwargs):
             if current_user()["role"] not in roles:
-                return redirect(url_for("dashboard.page"))
+                return redirect(url_for(home_endpoint(current_user())))
             return view(*args, **kwargs)
         return wrapper
     return decorator

@@ -5,5 +5,6 @@ from mymotoworks.services.accounts import AccountService
 from mymotoworks.services.auth import AuthService, LoginThrottle
 from mymotoworks.services.item_import import ItemImportService
 from mymotoworks.services.items import ItemService
+from mymotoworks.services.sales import SaleService
 
-__all__ = ["AccountService", "AuthService", "ItemImportService", "ItemService", "LoginThrottle"]
+__all__ = ["AccountService", "AuthService", "ItemImportService", "ItemService", "LoginThrottle", "SaleService"]

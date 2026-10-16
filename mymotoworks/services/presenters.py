@@ -32,3 +32,33 @@ def item_json(row, role):
         item["puhunan"] = row["puhunan"]
         item["tubo"] = row["benta"] - row["puhunan"]
     return item
+
+
+def sale_json(sale, lines, role):
+    """A sale with its lines. Cost and profit are only for the admin."""
+    admin = role == "admin"
+    result_lines = []
+    for line in lines:
+        item = {
+            "item_id": line["item_id"],
+            "name": line["item_name"],
+            "qty": line["qty"],
+            "benta": line["benta"],
+            "line_total": line["qty"] * line["benta"],
+        }
+        if admin:
+            item["puhunan"] = line["puhunan"]
+            item["tubo"] = (line["benta"] - line["puhunan"]) * line["qty"]
+        result_lines.append(item)
+    result = {
+        "id": sale["id"],
+        "sale_date": sale["sale_date"],
+        "total": sale["total"],
+        "recorded_by": sale["user_name"],
+        "voided": sale["voided_at"] is not None,
+        "void_reason": sale["void_reason"],
+        "lines": result_lines,
+    }
+    if admin:
+        result["tubo"] = sum(line["tubo"] for line in result_lines)
+    return result

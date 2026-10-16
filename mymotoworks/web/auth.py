@@ -4,20 +4,22 @@ from flask import Blueprint, current_app, jsonify, redirect, render_template, re
 
 from mymotoworks.database import get_db
 from mymotoworks.services import AuthService
-from mymotoworks.web.security import current_user, json_body
+from mymotoworks.web.security import current_user, home_endpoint, json_body
 
 bp = Blueprint("auth", __name__)
 
 
 @bp.get("/")
 def index():
-    return redirect(url_for("dashboard.page" if current_user() else "auth.login_page"))
+    user = current_user()
+    return redirect(url_for(home_endpoint(user) if user else "auth.login_page"))
 
 
 @bp.get("/login")
 def login_page():
-    if current_user():
-        return redirect(url_for("dashboard.page"))
+    user = current_user()
+    if user:
+        return redirect(url_for(home_endpoint(user)))
     return render_template("login.html")
 
 
@@ -28,7 +30,8 @@ def api_login():
                                        current_app.extensions["login_throttle"])
     session.clear()  # a new login never reuses an old session
     session["user_id"] = user["id"]
-    return jsonify(ok=True, must_change_password=bool(user["must_change_password"]))
+    return jsonify(ok=True, must_change_password=bool(user["must_change_password"]),
+                   home=url_for(home_endpoint(user)))
 
 
 @bp.post("/api/logout")

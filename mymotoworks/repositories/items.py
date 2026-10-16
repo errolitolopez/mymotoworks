@@ -53,3 +53,9 @@ class ItemRepository(Repository):
             (fields["name"], fields["model"], fields["part_no"], fields["puhunan"], fields["benta"],
              fields["reorder_level"], int(fields["track_stock"]), int(fields["active"]), item_id),
         )
+
+    def change_stock(self, item_id, amount):
+        """Add `amount` (negative to take away) to the stock. Stock may go below 0: a wrong count
+        must never stop a sale."""
+        self.execute("UPDATE items SET stock = stock + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                     (amount, item_id))
