@@ -189,3 +189,66 @@ def test_seed_command_adds_sample_items_once(app, admin):
     assert first >= 100
     assert runner.invoke(args=["seed"]).exit_code == 0
     assert admin.get("/api/items?per_page=100").get_json()["total"] == first
+
+
+def test_edit_an_item(admin):
+    item = make_item(admin)
+    response = admin.put(f"/api/items/{item['id']}", json={
+        "name": "  AIR FILTER  SUNTAL 2 ", "model": "NMAX V2", "part_no": "YA041",
+        "puhunan": 11000, "benta": 16000, "reorder_level": 1, "track_stock": True})
+    assert response.status_code == 200
+    saved = response.get_json()["item"]
+    assert saved["name"] == "AIR FILTER SUNTAL 2" and saved["model"] == "NMAX V2"
+    assert saved["puhunan"] == 11000 and saved["benta"] == 16000 and saved["tubo"] == 5000
+    assert saved["reorder_level"] == 1
+    assert items(admin.get("/api/items"))[0]["name"] == "AIR FILTER SUNTAL 2"
+
+
+def test_a_partial_edit_keeps_the_other_fields(admin):
+    item = make_item(admin)
+    saved = admin.put(f"/api/items/{item['id']}", json={"benta": 20000}).get_json()["item"]
+    assert saved["benta"] == 20000
+    assert saved["name"] == "AIR FILTER SUNTAL" and saved["puhunan"] == 10350 and saved["stock"] == 3
+
+
+def test_edit_never_changes_the_stock(admin):
+    item = make_item(admin, stock=3)
+    saved = admin.put(f"/api/items/{item['id']}", json={"name": "NEW", "stock": 99}).get_json()["item"]
+    assert saved["name"] == "NEW" and saved["stock"] == 3
+
+
+def test_turning_stock_counting_off_keeps_the_number(admin):
+    item = make_item(admin, stock=3, reorder_level=2)
+    saved = admin.put(f"/api/items/{item['id']}", json={"track_stock": False}).get_json()["item"]
+    assert saved["track_stock"] is False and saved["low_stock"] is False and saved["stock"] == 3
+    again = admin.put(f"/api/items/{item['id']}", json={"track_stock": True}).get_json()["item"]
+    assert again["stock"] == 3 and again["low_stock"] is False
+
+
+def test_a_bad_edit_saves_nothing(admin):
+    item = make_item(admin)
+    assert admin.put(f"/api/items/{item['id']}", json={"name": "CHANGED", "benta": -5}).status_code == 400
+    assert admin.put(f"/api/items/{item['id']}", json={"name": ""}).status_code == 400
+    assert items(admin.get("/api/items"))[0]["name"] == "AIR FILTER SUNTAL"
+
+
+def test_deactivate_and_activate(admin):
+    item = make_item(admin)
+    off = admin.put(f"/api/items/{item['id']}", json={"active": False}).get_json()["item"]
+    assert off["active"] is False
+    assert items(admin.get("/api/items")) == []
+    assert len(items(admin.get("/api/items?inactive=1"))) == 1
+    on = admin.put(f"/api/items/{item['id']}", json={"active": True}).get_json()["item"]
+    assert on["active"] is True
+    assert len(items(admin.get("/api/items"))) == 1
+
+
+def test_unknown_item_is_not_found(admin):
+    assert admin.put("/api/items/9999", json={"name": "x"}).status_code == 404
+
+
+def test_staff_cannot_edit(admin):
+    item = make_item(admin)
+    staff = login("staff1")
+    assert staff.put(f"/api/items/{item['id']}", json={"benta": 1}).status_code == 403
+    assert items(admin.get("/api/items"))[0]["benta"] == 15000

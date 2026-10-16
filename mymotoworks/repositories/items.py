@@ -44,3 +44,12 @@ class ItemRepository(Repository):
             f"SELECT * FROM items {where} ORDER BY name COLLATE NOCASE, model COLLATE NOCASE, id LIMIT ? OFFSET ?",
             params + [limit, offset],
         )
+
+    def update(self, item_id, fields):
+        """Change the editable fields (never the stock). Fields from clean_item."""
+        self.execute(
+            "UPDATE items SET name = ?, model = ?, part_no = ?, puhunan = ?, benta = ?, reorder_level = ?, "
+            "track_stock = ?, active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (fields["name"], fields["model"], fields["part_no"], fields["puhunan"], fields["benta"],
+             fields["reorder_level"], int(fields["track_stock"]), int(fields["active"]), item_id),
+        )

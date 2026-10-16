@@ -4,6 +4,7 @@ import math
 
 from mymotoworks.domain.items import clean_item
 from mymotoworks.domain.text import search_words
+from mymotoworks.errors import NotFoundError
 from mymotoworks.repositories import ItemRepository
 from mymotoworks.services.base import Service
 from mymotoworks.services.presenters import item_json
@@ -34,5 +35,19 @@ class ItemService(Service):
     def create(self, data):
         """Add an item. Returns its JSON."""
         item_id = self.items.create(clean_item(data, creating=True))
+        self.commit()
+        return item_json(self.items.get(item_id), self.user["role"])
+
+    # What an edit may change. Stock is not here: it moves only through sales, restocks and adjustments.
+    EDITABLE = ("name", "model", "part_no", "puhunan", "benta", "reorder_level", "track_stock", "active")
+
+    def update(self, item_id, data):
+        """Change an item. Only the keys sent change; the rest stay as saved. Returns its JSON."""
+        row = self.items.get(item_id)
+        if row is None:
+            raise NotFoundError("Item not found.")
+        merged = {key: row[key] for key in self.EDITABLE}
+        merged.update({key: data[key] for key in self.EDITABLE if key in data})
+        self.items.update(item_id, clean_item(merged, creating=False))
         self.commit()
         return item_json(self.items.get(item_id), self.user["role"])

@@ -21,6 +21,44 @@ const textLine = (text) => {
   return line;
 };
 
+// smallButton("bi-pencil", "Edit", handler) -> a small outline button with an icon and a label
+const smallButton = (icon, label, onClick) => {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `btn btn-outline-secondary btn-sm bi ${icon}`;
+  button.textContent = ` ${label}`;
+  button.addEventListener("click", () => onClick(button));
+  return button;
+};
+
+// Set below, for the admin: opens the form to edit an item.
+let openFormForEdit = () => {};
+
+// toggleActive(item, button) -> asks first when deactivating, then saves and reloads the list
+const toggleActive = async (item, button) => {
+  if (item.active && !confirm(`Deactivate ${item.name}? It leaves the list and the sell page. Old sales keep it.`)) return;
+  const stopLoading = startLoading(button);
+  if (!stopLoading) return;
+  try {
+    const response = await apiFetch(`/api/items/${item.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: !item.active }),
+    });
+    if (!response) return;
+    const data = await response.json();
+    if (!response.ok) {
+      showError("load-error", data.error || "Could not save the change.");
+      return;
+    }
+    loadItems();
+  } catch {
+    showError("load-error", "Cannot reach the server. Check your connection.");
+  } finally {
+    stopLoading();
+  }
+};
+
 // itemRow({name, model, part_no, benta, stock, ...}) -> one list row
 const itemRow = (item) => {
   const row = document.createElement("div");
@@ -30,6 +68,7 @@ const itemRow = (item) => {
   const name = document.createElement("div");
   name.className = "fw-semibold";
   name.textContent = item.name;
+  if (!item.active) name.append(" ", badge("Deactivated", "text-bg-danger"));
   info.append(name);
   const where = [item.model, item.part_no].filter(Boolean).join(" · ");
   if (where) info.append(textLine(where));
@@ -54,6 +93,16 @@ const itemRow = (item) => {
   numbers.append(price, stock);
 
   row.append(info, numbers);
+  if (isAdmin) {
+    const actions = document.createElement("div");
+    actions.className = "d-flex gap-2";
+    actions.append(
+      smallButton("bi-pencil", "Edit", () => openFormForEdit(item)),
+      smallButton(item.active ? "bi-slash-circle" : "bi-check-circle", item.active ? "Deactivate" : "Activate",
+        (button) => toggleActive(item, button)),
+    );
+    row.append(actions);
+  }
   return row;
 };
 
@@ -74,6 +123,7 @@ const itemsUrl = () => {
   const params = new URLSearchParams({ page });
   if (searchInput.value.trim()) params.set("q", searchInput.value.trim());
   if (lowOnly.checked) params.set("low", "1");
+  if (isAdmin && document.getElementById("show-inactive").checked) params.set("inactive", "1");
   return `/api/items?${params}`;
 };
 
@@ -137,15 +187,27 @@ if (isAdmin) {
   };
   trackInput.addEventListener("change", showStockFields);
 
-  const openForm = () => {
-    document.getElementById("item-modal-title").textContent = "Add item";
-    [nameInput, modelInput, partNoInput, puhunanInput, bentaInput, stockInput, reorderInput]
-      .forEach((input) => (input.value = ""));
-    trackInput.checked = true;
+  let editingId = null; // null while adding a new item
+
+  // openForm() adds an item; openForm(item) edits it. Stock is not editable here: it changes
+  // through sales, restocks and stock adjustments.
+  const openForm = (item = null) => {
+    editingId = item ? item.id : null;
+    document.getElementById("item-modal-title").textContent = item ? "Edit item" : "Add item";
+    nameInput.value = item ? item.name : "";
+    modelInput.value = item ? item.model : "";
+    partNoInput.value = item ? item.part_no : "";
+    puhunanInput.value = item ? pesos(item.puhunan).replaceAll(",", "") : "";
+    bentaInput.value = item ? pesos(item.benta).replaceAll(",", "") : "";
+    stockInput.value = "";
+    reorderInput.value = item ? String(item.reorder_level) : "";
+    trackInput.checked = item ? item.track_stock : true;
+    document.getElementById("stock-field").classList.toggle("d-none", Boolean(item));
     showStockFields();
     hideError("form-error");
     itemModal.show();
   };
+  openFormForEdit = openForm;
 
   // Turns what was typed into the JSON the API wants, or returns {error} for the first bad box.
   const readForm = () => {
@@ -177,10 +239,13 @@ if (isAdmin) {
     const stopLoading = startLoading(saveButton);
     if (!stopLoading) return;
     try {
-      const response = await apiFetch("/api/items", {
-        method: "POST",
+      const adding = editingId === null;
+      // The server ignores stock on an edit; leave it out so it is clear it is not sent.
+      const { stock, ...changes } = form.body;
+      const response = await apiFetch(adding ? "/api/items" : `/api/items/${editingId}`, {
+        method: adding ? "POST" : "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form.body),
+        body: JSON.stringify(adding ? form.body : changes),
       });
       if (!response) return;
       const data = await response.json();
@@ -197,7 +262,8 @@ if (isAdmin) {
     }
   });
 
-  document.getElementById("add-button").addEventListener("click", openForm);
+  document.getElementById("add-button").addEventListener("click", () => openForm());
+  document.getElementById("show-inactive").addEventListener("change", reloadFromStart);
 }
 
 loadItems();

@@ -40,3 +40,9 @@ def api_list():
 @role_required_api("admin")
 def api_create():
     return jsonify(item=service().create(json_body())), 201
+
+
+@bp.put("/api/items/<int:item_id>")
+@role_required_api("admin")
+def api_update(item_id):
+    return jsonify(item=service().update(item_id, json_body()))
