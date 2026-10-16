@@ -1,0 +1,36 @@
+"""Login and logout."""
+
+from flask import Blueprint, jsonify, redirect, render_template, session, url_for
+
+from mymotoworks.database import get_db
+from mymotoworks.services import AuthService
+from mymotoworks.web.security import current_user, json_body
+
+bp = Blueprint("auth", __name__)
+
+
+@bp.get("/")
+def index():
+    return redirect(url_for("dashboard.page" if current_user() else "auth.login_page"))
+
+
+@bp.get("/login")
+def login_page():
+    if current_user():
+        return redirect(url_for("dashboard.page"))
+    return render_template("login.html")
+
+
+@bp.post("/api/login")
+def api_login():
+    data = json_body()
+    user = AuthService(get_db()).login(data.get("username"), data.get("password"))
+    session.clear()  # a new login never reuses an old session
+    session["user_id"] = user["id"]
+    return jsonify(ok=True, must_change_password=bool(user["must_change_password"]))
+
+
+@bp.post("/api/logout")
+def api_logout():
+    session.clear()
+    return jsonify(ok=True)

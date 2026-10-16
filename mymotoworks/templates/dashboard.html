@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Home · mymotoworks{% endblock %}
+
+{% block content %}
+{% include "_navbar.html" %}
+<main class="container py-4">
+  <div class="card">
+    <div class="card-body">
+      <h1 class="h4">Hello, {{ user.name }}</h1>
+      <p class="mb-0 text-body-secondary">You are logged in as {{ user.role }}. The shop pages come next.</p>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+{% endblock %}

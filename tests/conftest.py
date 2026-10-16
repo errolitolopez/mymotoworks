@@ -8,12 +8,43 @@ import sqlite3
 import tempfile
 
 import pytest
+from werkzeug.security import generate_password_hash
 
 # The app reads its database path from MYMOTOWORKS_DATABASE when it is imported.
 _DB_DIR = tempfile.mkdtemp(prefix="mymotoworks-tests-")
 os.environ["MYMOTOWORKS_DATABASE"] = os.path.join(_DB_DIR, "test.db")
 
 from app import app as flask_app  # noqa: E402  (must come after setting the database path)
+
+
+from mymotoworks.database import get_db  # noqa: E402
+from mymotoworks.repositories import UserRepository  # noqa: E402
+
+PASSWORD = "1234"  # the sample staff account
+
+
+def seed_staff():
+    """A sample staff account: staff1 / 1234, no password change needed."""
+    with flask_app.app_context():
+        db = get_db()
+        UserRepository(db).create("Sample Staff", "staff1", generate_password_hash(PASSWORD), "staff", 0)
+        db.commit()
+
+
+def db_execute(sql, params=()):
+    """Change the test database directly (for setting up a situation the API cannot make)."""
+    with flask_app.app_context():
+        db = get_db()
+        db.execute(sql, params)
+        db.commit()
+
+
+def login(username, password=PASSWORD):
+    """A test client logged in as this user."""
+    client = flask_app.test_client()
+    response = client.post("/api/login", json={"username": username, "password": password})
+    assert response.status_code == 200, response.get_json()
+    return client
 
 
 def reset_database():
@@ -29,6 +60,7 @@ def reset_database():
     connection.commit()
     connection.close()
     assert flask_app.test_cli_runner().invoke(args=["init-db"]).exit_code == 0
+    seed_staff()
 
 
 @pytest.fixture(autouse=True)
