@@ -35,7 +35,8 @@ mymotoworks/
   imports.py            reading the old spreadsheet, and the import-items command
   migrations.py         adds columns that older databases lack (runs on every start)
   exports.py            the Excel files of the reports
-  commands.py           console tools for the server's owner (set-password)
+  backup.py             a complete, consistent copy of the database
+  commands.py           console tools for the server's owner (set-password, backup)
   web/                  Flask blueprints (pages + JSON API)
   templates/, static/   base.html, home.html, glass.css, theme.js
 tests/                  pytest suite
@@ -99,6 +100,18 @@ All under the **Stock** menu on the Items page.
   reason, the note, who and when. An item's ⋮ menu opens it filtered to that item.
 - Nothing is edited or deleted. A mistake is fixed with another adjustment the other way round. A
   double tap on Save changes the stock once.
+
+## Backups (admin)
+
+All the shop's data is one file, `instance/mymotoworks.db`. Back it up often.
+
+- **Download backup** on the admin's Home page: a complete, consistent copy as one file, taken even while the
+  app is being used. The page says "Last backup: 3 days ago" and turns yellow when the last backup is more than
+  7 days old or there never was one. Keep the downloaded files somewhere other than the host.
+- **Console:** `flask --app app backup [--keep 14] [--to FOLDER]` writes a copy to `instance/backups/` and deletes
+  the oldest ones.
+- **Restore:** stop using the site, keep the current file under another name, upload the backup as
+  `instance/mymotoworks.db`, then reload the app. The file holds password hashes, so keep it private.
 
 ## Running online
 

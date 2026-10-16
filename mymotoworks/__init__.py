@@ -29,6 +29,7 @@ def create_app(test_config=None):
     app.cli.add_command(seed.seed_command)
     app.cli.add_command(imports.import_items_command)
     app.cli.add_command(commands.set_password_command)
+    app.cli.add_command(commands.backup_command)
     register_error_handlers(app)
     app.extensions["login_throttle"] = LoginThrottle()
     for blueprint in BLUEPRINTS:
