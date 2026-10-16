@@ -1,7 +1,8 @@
 """Login and password use cases."""
 
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
+from mymotoworks.domain.accounts import check_password_change
 from mymotoworks.errors import ForbiddenError, UnauthorizedError, ValidationError
 from mymotoworks.services.base import Service
 
@@ -23,3 +24,13 @@ class AuthService(Service):
         if not user["active"]:
             raise ForbiddenError("This account is deactivated. Ask the admin.")
         return user
+
+    def change_password(self, current_password, new_password):
+        """Save a new password for the logged-in user. It ends a forced password change."""
+        current_password = str(current_password or "")
+        new_password = str(new_password or "")
+        if not check_password_hash(self.user["password_hash"], current_password):
+            raise ValidationError("Current password is wrong.")
+        check_password_change(self.user["username"], current_password, new_password)
+        self.users.set_password(self.user["id"], generate_password_hash(new_password), False)
+        self.commit()

@@ -24,3 +24,7 @@ class UserRepository(Repository):
     def by_username(self, username):
         """The user with this username (capitals do not matter), or None."""
         return self.one("SELECT * FROM users WHERE username = ?", (username,))
+
+    def set_password(self, user_id, password_hash, must_change_password):
+        self.execute("UPDATE users SET password_hash = ?, must_change_password = ? WHERE id = ?",
+                     (password_hash, 1 if must_change_password else 0, user_id))

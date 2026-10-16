@@ -21,6 +21,7 @@ from mymotoworks.database import get_db  # noqa: E402
 from mymotoworks.repositories import UserRepository  # noqa: E402
 
 PASSWORD = "1234"  # the sample staff account
+ADMIN_PASSWORD = "adminpass1"  # the admin after the forced password change
 
 
 def seed_staff():
@@ -77,3 +78,13 @@ def app():
 @pytest.fixture
 def client():
     return flask_app.test_client()
+
+
+@pytest.fixture
+def admin():
+    """The default admin, logged in, after the forced password change."""
+    client = login("admin", "admin")
+    response = client.post("/api/change-password",
+                           json={"current_password": "admin", "new_password": ADMIN_PASSWORD})
+    assert response.status_code == 200, response.get_json()
+    return client

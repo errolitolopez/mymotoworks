@@ -1,4 +1,4 @@
-"""Login and logout."""
+"""Login, logout, change password."""
 
 from flask import Blueprint, jsonify, redirect, render_template, session, url_for
 
@@ -33,4 +33,22 @@ def api_login():
 @bp.post("/api/logout")
 def api_logout():
     session.clear()
+    return jsonify(ok=True)
+
+
+@bp.get("/change-password")
+def change_password_page():
+    user = current_user()
+    if user is None:
+        return redirect(url_for("auth.login_page"))
+    return render_template("change_password.html", user=user)
+
+
+@bp.post("/api/change-password")
+def api_change_password():
+    user = current_user()
+    if user is None:
+        return jsonify(error="Please log in."), 401
+    data = json_body()
+    AuthService(get_db(), user).change_password(data.get("current_password"), data.get("new_password"))
     return jsonify(ok=True)

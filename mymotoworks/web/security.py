@@ -28,10 +28,14 @@ def json_body():
 
 
 def login_required_page(view):
-    """For HTML pages: send the user to the login page if not logged in."""
+    """For HTML pages: send the user to the login page if not logged in,
+    or to the change password page if they still have a temporary password."""
     @wraps(view)
     def wrapper(*args, **kwargs):
-        if current_user() is None:
+        user = current_user()
+        if user is None:
             return redirect(url_for("auth.login_page"))
+        if user["must_change_password"]:
+            return redirect(url_for("auth.change_password_page"))
         return view(*args, **kwargs)
     return wrapper
