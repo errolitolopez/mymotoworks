@@ -3,8 +3,8 @@
 import math
 
 from mymotoworks import config
-from mymotoworks.domain.restocks import clean_restock
-from mymotoworks.errors import ValidationError
+from mymotoworks.domain.restocks import clean_restock, clean_restock_void_reason
+from mymotoworks.errors import NotFoundError, ValidationError
 from mymotoworks.repositories import ItemRepository, RestockRepository
 from mymotoworks.services.base import Service
 from mymotoworks.services.presenters import restock_json
@@ -64,3 +64,22 @@ class RestockService(Service):
         page = max(1, page)
         rows = self.restocks.page(per_page, (page - 1) * per_page)
         return {"restocks": [self._json(row) for row in rows], "page": page, "pages": pages, "total": total}
+
+    def void(self, restock_id, data):
+        """Cancel a restock: its quantities come out of the stock again, and each item's old cost is put
+        back unless the cost was changed since (another restock, or an edit). The record stays."""
+        restock = self.restocks.get(restock_id)
+        if restock is None:
+            raise NotFoundError("Restock not found.")
+        if restock["voided_at"] is not None:
+            raise ValidationError("This restock is already voided.")
+        reason = clean_restock_void_reason(data.get("reason"))
+        for line in self.restocks.lines(restock_id):
+            self.items.change_stock(line["item_id"], -line["qty"])
+            item = self.items.get(line["item_id"])
+            # Only when the cost is still the one this restock set: otherwise a later change would be lost.
+            if item["puhunan"] == line["puhunan"]:
+                self.items.set_puhunan(line["item_id"], line["old_puhunan"])
+        self.restocks.mark_voided(restock_id, self.user["id"], reason)
+        self.commit()
+        return {"restock": self._json(self.restocks.get(restock_id))}

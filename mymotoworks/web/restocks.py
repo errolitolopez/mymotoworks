@@ -44,3 +44,10 @@ def api_create():
     restock, 200 when it was already saved."""
     result = service().create(json_body())
     return jsonify(result), 200 if result["duplicate"] else 201
+
+
+@bp.post("/api/restocks/<int:restock_id>/void")
+@role_required_api("admin")
+def api_void(restock_id):
+    """Body: {reason}. Admin only."""
+    return jsonify(service().void(restock_id, json_body()))

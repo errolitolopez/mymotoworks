@@ -241,3 +241,95 @@ def test_the_history_is_for_the_admin_only(admin, client):
 def test_the_history_page_is_its_own_page(admin):
     html = admin.get("/restocks").get_data(as_text=True)
     assert 'id="restock-list"' in html and 'id="pager"' in html and 'id="save-restock"' not in html
+
+
+def void(client, restock_id, reason="Typed the wrong number"):
+    return client.post(f"/api/restocks/{restock_id}/void", json={"reason": reason})
+
+
+def test_void_takes_the_stock_back_puts_the_old_cost_back_and_keeps_the_record(admin):
+    item = make_item(admin, stock=3)  # puhunan 10350
+    saved = restock(admin, [{"item_id": item["id"], "qty": 10, "puhunan": 11000}]).get_json()["restock"]
+    assert item_row(admin, item)["stock"] == 13
+    response = void(admin, saved["id"], "  Wrong   quantity ")
+    assert response.status_code == 200
+    voided = response.get_json()["restock"]
+    assert voided["voided"] is True and voided["void_reason"] == "Wrong quantity"
+    now = item_row(admin, item)
+    assert now["stock"] == 3 and now["puhunan"] == 10350
+    kept = admin.get("/api/restocks").get_json()["restocks"][0]        # the record is still there, unchanged
+    assert kept["voided"] is True and kept["total"] == 110000 and kept["lines"][0]["qty"] == 10
+
+
+def test_void_does_not_overwrite_a_cost_changed_since(admin):
+    item = make_item(admin, stock=3)  # puhunan 10350
+    first = restock(admin, [{"item_id": item["id"], "qty": 5, "puhunan": 11000}]).get_json()["restock"]
+    restock(admin, [{"item_id": item["id"], "qty": 5, "puhunan": 12000}])
+    void(admin, first["id"])
+    now = item_row(admin, item)
+    assert now["puhunan"] == 12000      # the later restock's cost stays
+    assert now["stock"] == 3 + 5 + 5 - 5
+
+
+def test_voiding_the_latest_restock_puts_back_the_cost_before_it(admin):
+    item = make_item(admin, stock=3)
+    restock(admin, [{"item_id": item["id"], "qty": 5, "puhunan": 11000}])
+    second = restock(admin, [{"item_id": item["id"], "qty": 5, "puhunan": 12000}]).get_json()["restock"]
+    void(admin, second["id"])
+    assert item_row(admin, item)["puhunan"] == 11000
+
+
+def test_void_does_not_overwrite_a_cost_edited_by_hand_since(admin):
+    item = make_item(admin, stock=3)
+    saved = restock(admin, [{"item_id": item["id"], "qty": 5, "puhunan": 11000}]).get_json()["restock"]
+    admin.put(f"/api/items/{item['id']}", json={"puhunan": 13000})
+    void(admin, saved["id"])
+    assert item_row(admin, item)["puhunan"] == 13000
+
+
+def test_voiding_twice_takes_the_stock_out_only_once(admin):
+    item = make_item(admin, stock=3)
+    saved = restock(admin, [{"item_id": item["id"], "qty": 10, "puhunan": 11000}]).get_json()["restock"]
+    assert void(admin, saved["id"]).status_code == 200
+    again = void(admin, saved["id"])
+    assert again.status_code == 400 and again.get_json()["error"] == "This restock is already voided."
+    assert item_row(admin, item)["stock"] == 3
+
+
+def test_void_may_take_the_stock_below_zero_when_some_was_sold(admin):
+    item = make_item(admin, stock=0)
+    saved = restock(admin, [{"item_id": item["id"], "qty": 2, "puhunan": 11000}]).get_json()["restock"]
+    sold(admin, item, qty=2)
+    assert item_row(admin, item)["stock"] == 0
+    void(admin, saved["id"])
+    assert item_row(admin, item)["stock"] == -2
+
+
+def test_void_needs_a_reason_and_staff_cannot_void(admin):
+    item = make_item(admin, stock=3)
+    saved = restock(admin, [{"item_id": item["id"], "qty": 4, "puhunan": 11000}]).get_json()["restock"]
+    for bad in ("", "   ", None, 5, "x" * 201):
+        response = admin.post(f"/api/restocks/{saved['id']}/void", json={"reason": bad})
+        assert response.status_code == 400, bad
+    assert admin.post(f"/api/restocks/{saved['id']}/void").status_code == 400
+    assert void(login("staff1"), saved["id"]).status_code == 403
+    assert item_row(admin, item)["stock"] == 7
+
+
+def test_void_of_an_unknown_restock_is_not_found(admin):
+    assert void(admin, 9999).status_code == 404
+
+
+def test_a_voided_restock_with_the_same_reference_is_not_saved_again(admin):
+    item = make_item(admin, stock=3)
+    line = [{"item_id": item["id"], "qty": 4, "puhunan": 11000}]
+    first = restock(admin, line, client_ref="r-1").get_json()["restock"]
+    void(admin, first["id"])
+    again = restock(admin, line, client_ref="r-1")
+    assert again.status_code == 200 and again.get_json()["duplicate"] is True
+    assert again.get_json()["restock"]["voided"] is True
+    assert item_row(admin, item)["stock"] == 3
+
+
+def test_the_history_page_has_the_void_form(admin):
+    assert 'id="void-modal"' in admin.get("/restocks").get_data(as_text=True)

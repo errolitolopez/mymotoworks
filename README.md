@@ -30,7 +30,7 @@ mymotoworks/
   schema.sql            the tables
   domain/               rules with no Flask or SQL (accounts, items, money, text helpers)
   repositories/         all SQL, one class per kind of data; they never commit
-  services/             use cases (auth, accounts, items, item import, sales); they check roles and commit
+  services/             use cases (auth, accounts, items, item import, sales, restocks); they check roles and commit
   seed.py               flask --app app seed: about 140 sample items (only when there are none)
   imports.py            reading the old spreadsheet, and the import-items command
   migrations.py         adds columns that older databases lack (runs on every start)
@@ -68,6 +68,19 @@ with the right status, with nothing saved.
   total. Staff see today only and no cost or profit. The admin picks any day and sees tubo.
 - The admin can **void** an approved sale with a reason: its stock comes back (exactly what it took)
   and it leaves the totals, but it stays in the list crossed out. Sales are never deleted.
+
+## Restocking (admin)
+
+- **Restock** (a button on the Items page): pick the items that arrived with − and +, set the quantity
+  and the **cost of one piece** (it starts at the item's current cost), add a note (like the
+  supplier) and the date, and save. The stock of each item goes up and its cost (puhunan) becomes the
+  cost you typed. Sales saved before keep the cost they were sold with. Only items that count stock
+  can be restocked, and each item is listed once. A double tap saves one restock.
+- **History**: every restock, newest first, each opening to show its items and the cost change.
+- **Void** a restock with a reason: the quantities come out of the stock again, and each item's old
+  cost is put back unless the cost was changed since (another restock, or an edit). The record stays,
+  crossed out. Restocks are never deleted.
+- Cash tracking is postponed, so a restock makes no cash-out.
 
 ## Loading the old spreadsheet
 

@@ -56,3 +56,15 @@ def clean_restock(data, today):
         raise ValidationError("That restock reference is not valid.")
     return {"restock_date": day.isoformat(), "client_ref": client_ref, "lines": cleaned,
             "note": clean_text(note, "Note", MAX_NOTE_LENGTH, required=False)}
+
+MAX_REASON_LENGTH = 200
+
+
+def clean_restock_void_reason(value):
+    """The reason for voiding a restock, trimmed. Raises ValidationError when empty or too long."""
+    reason = " ".join(value.split()) if isinstance(value, str) else ""
+    if not reason:
+        raise ValidationError("Write why the restock is voided.")
+    if len(reason) > MAX_REASON_LENGTH:
+        raise ValidationError(f"The reason can be at most {MAX_REASON_LENGTH} characters.")
+    return reason

@@ -44,3 +44,8 @@ class RestockRepository(Repository):
         return self.all(
             f"SELECT {RESTOCK_COLUMNS} FROM restocks JOIN users ON users.id = restocks.user_id "
             "ORDER BY restocks.id DESC LIMIT ? OFFSET ?", (limit, offset))
+
+    def mark_voided(self, restock_id, user_id, reason):
+        self.execute(
+            "UPDATE restocks SET voided_at = CURRENT_TIMESTAMP, voided_by = ?, void_reason = ? WHERE id = ?",
+            (user_id, reason, restock_id))

@@ -82,9 +82,62 @@ const restockCard = (restock) => {
     note.textContent = `Voided: ${restock.void_reason}`;
     body.append(note);
   }
+  if (!restock.voided) {
+    const voidButton = document.createElement("button");
+    voidButton.type = "button";
+    voidButton.className = "btn btn-outline-danger bi bi-slash-circle align-self-start mt-2";
+    voidButton.textContent = " Void restock";
+    voidButton.addEventListener("click", () => openVoid(restock));
+    body.append(voidButton);
+  }
   card.append(summary, body);
   return card;
 };
+
+let voidingId = null;
+
+// openVoid(restock) -> opens the reason form for that restock
+const openVoid = (restock) => {
+  voidingId = restock.id;
+  document.getElementById("void-summary").textContent =
+    `Restock #${restock.id}, ₱${pesos(restock.total)}, ${formatDay(restock.restock_date)}.`;
+  document.getElementById("void-reason").value = "";
+  hideError("void-error");
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("void-modal")).show();
+};
+
+const voidForm = document.getElementById("void-form");
+const confirmButton = document.getElementById("void-button");
+voidForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  hideError("void-error");
+  const reason = document.getElementById("void-reason").value.trim();
+  if (!reason) {
+    showError("void-error", "Write why the restock is voided.");
+    return;
+  }
+  const stopLoading = startLoading(confirmButton);
+  if (!stopLoading) return;
+  try {
+    const response = await apiFetch(`/api/restocks/${voidingId}/void`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    if (!response) return;
+    const data = await response.json();
+    if (!response.ok) {
+      showError("void-error", data.error || "Could not void the restock.");
+      return;
+    }
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("void-modal")).hide();
+    loadPage();
+  } catch {
+    showError("void-error", "Cannot reach the server. Check your connection.");
+  } finally {
+    stopLoading();
+  }
+});
 
 const loadPage = async () => {
   try {
