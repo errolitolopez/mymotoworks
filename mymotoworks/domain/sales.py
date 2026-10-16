@@ -41,7 +41,7 @@ def _clean_line(line):
 
 
 def clean_sale(data, today, is_admin):
-    """What the cart sent, checked: {"sale_date", "client_ref", "lines", "note"}. `today` is the shop's date.
+    """What the cart sent, checked: {"sale_date", "client_ref", "lines", "note", "replaces"}. `today` is the shop's date.
     Staff may only sell today; the admin may also use a past day. Nobody may use a future day."""
     lines = data.get("lines")
     if not isinstance(lines, list) or not lines:
@@ -67,8 +67,11 @@ def clean_sale(data, today, is_admin):
     note = data.get("note")
     if note is not None and not isinstance(note, str):
         raise ValidationError("Note must be text.")
+    replaces = data.get("replaces")
+    if replaces is not None and (not is_whole_number(replaces) or replaces < 1):
+        raise ValidationError("Sale to replace is not valid.")
     return {"sale_date": day.isoformat(), "client_ref": client_ref, "lines": cleaned,
-            "note": clean_text(note, "Note", MAX_NOTE_LENGTH, required=False)}
+            "note": clean_text(note, "Note", MAX_NOTE_LENGTH, required=False), "replaces": replaces}
 
 MAX_REASON_LENGTH = 200
 

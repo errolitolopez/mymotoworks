@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS sales (
     void_reason TEXT NOT NULL DEFAULT '',
     -- Free text such as the customer's name, so a sale can be found and tracked later.
     note TEXT NOT NULL DEFAULT '',
+    -- Set when this sale corrects an earlier one: the earlier sale was voided and is kept as history.
+    replaces_sale_id INTEGER REFERENCES sales(id),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

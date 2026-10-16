@@ -61,6 +61,8 @@ def sale_json(sale, lines, role):
         "voided": sale["voided_at"] is not None,
         "void_reason": sale["void_reason"],
         "note": sale["note"],
+        "replaces": sale["replaces_sale_id"],
+        "replaced_by": sale["replaced_by"],
         "lines": result_lines,
     }
     if admin:

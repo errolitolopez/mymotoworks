@@ -8,6 +8,8 @@
   <h1 class="h4 mb-3">Sell</h1>
 
   <div id="sale-message" class="alert alert-success d-none" role="status"></div>
+  <!-- Shown when the cart was started from an earlier sale (Copy on the Sales page). -->
+  <div id="copy-banner" class="alert alert-info d-none" role="status"></div>
 
   <input id="item-search" type="search" class="form-control mb-2" placeholder="Search item, model or part no."
          aria-label="Search item, model or part no." autocomplete="off">
@@ -28,6 +30,11 @@
       </div>
 
       {% if user.role == "admin" %}
+      <!-- Only for a copied sale that is not voided yet: saving then voids the old sale too. -->
+      <div id="replace-box" class="form-check mt-3 d-none">
+        <input id="replace-check" type="checkbox" class="form-check-input">
+        <label for="replace-check" id="replace-label" class="form-check-label"></label>
+      </div>
       <div class="mt-3">
         <label for="sale-date" class="form-label">Date of the sale</label>
         <input id="sale-date" type="date" class="form-control" value="{{ today }}" max="{{ today }}">

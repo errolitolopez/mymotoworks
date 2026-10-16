@@ -436,5 +436,142 @@ def test_an_old_database_without_the_note_column_is_upgraded_and_keeps_its_sales
     for _ in range(2):  # starting twice must not fail
         create_app({"DATABASE": path})
     upgraded = sqlite3.connect(path)
-    assert upgraded.execute("SELECT total, note FROM sales").fetchall() == [(500, "")]
+    assert upgraded.execute("SELECT total, note, replaces_sale_id FROM sales").fetchall() == [(500, "", None)]
     upgraded.close()
+
+
+def copy_of(client, sale_id):
+    return client.get(f"/api/sales/{sale_id}/copy")
+
+
+def test_copy_gives_the_items_prices_and_note_and_changes_nothing(admin):
+    item = make_item(admin, stock=9)
+    staff = login("staff1")
+    sale = sell(staff, [{"item_id": item["id"], "qty": 2, "benta": 14000}], note="Mang Ben").get_json()["sale"]
+    admin.put(f"/api/items/{item['id']}", json={"benta": 20000})  # the price changes later
+    data = copy_of(staff, sale["id"]).get_json()
+    assert data["sale_id"] == sale["id"] and data["note"] == "Mang Ben" and data["voided"] is False
+    assert data["sale_date"] == today() and data["skipped"] == []
+    line = data["lines"][0]
+    assert line["qty"] == 2 and line["benta"] == 14000          # what was charged, not the new price
+    assert line["item"]["id"] == item["id"] and line["item"]["benta"] == 20000
+    assert "puhunan" not in copy_of(staff, sale["id"]).get_data(as_text=True)
+    assert sale_count() == 1 and stock_of(admin, item) == 7
+
+
+def test_copy_leaves_out_items_that_are_no_longer_for_sale(admin):
+    keep, gone = make_item(admin, stock=9), make_item(admin, name="OLD FILTER", stock=9)
+    sale = sell(admin, [{"item_id": keep["id"], "qty": 1}, {"item_id": gone["id"], "qty": 1}]).get_json()["sale"]
+    admin.put(f"/api/items/{gone['id']}", json={"active": False})
+    data = copy_of(admin, sale["id"]).get_json()
+    assert [line["item"]["id"] for line in data["lines"]] == [keep["id"]]
+    assert data["skipped"] == ["OLD FILTER is no longer for sale."]
+
+
+def test_staff_can_copy_only_todays_sales_and_admin_any(admin, client):
+    item = make_item(admin, stock=9)
+    yesterday = (shop_today() - timedelta(days=1)).isoformat()
+    old = sell(admin, [{"item_id": item["id"], "qty": 1}], sale_date=yesterday).get_json()["sale"]
+    response = copy_of(login("staff1"), old["id"])
+    assert response.status_code == 403 and response.get_json()["error"] == "You can only see today's sales."
+    assert copy_of(admin, old["id"]).status_code == 200
+    assert copy_of(admin, 9999).status_code == 404
+    assert copy_of(client, old["id"]).status_code == 401
+
+
+def test_a_voided_sale_can_still_be_copied(admin):
+    item = make_item(admin, stock=9)
+    sale = sell(admin, [{"item_id": item["id"], "qty": 1}]).get_json()["sale"]
+    void(admin, sale["id"])
+    data = copy_of(login("staff1"), sale["id"]).get_json()
+    assert data["voided"] is True and len(data["lines"]) == 1
+
+
+def test_replace_voids_the_old_sale_and_keeps_both_records(admin):
+    item = make_item(admin, stock=5)
+    old = sell(login("staff1"), [{"item_id": item["id"], "qty": 3}], note="Ben").get_json()["sale"]
+    assert stock_of(admin, item) == 2
+    response = sell(admin, [{"item_id": item["id"], "qty": 2}], note="Ben", replaces=old["id"])
+    assert response.status_code == 201, response.get_json()
+    new = response.get_json()["sale"]
+    assert new["replaces"] == old["id"] and new["total"] == 30000
+    assert stock_of(admin, item) == 3                      # 5 - 3 + 3 - 2
+    listed = {sale["id"]: sale for sale in day(admin).get_json()["sales"]}
+    assert set(listed) == {old["id"], new["id"]}
+    kept = listed[old["id"]]                               # the old record is untouched
+    assert kept["voided"] is True and kept["void_reason"] == f"Replaced by sale #{new['id']}"
+    assert kept["replaced_by"] == new["id"] and kept["total"] == 45000 and kept["note"] == "Ben"
+    assert kept["lines"][0]["qty"] == 3 and kept["lines"][0]["benta"] == 15000
+    summary = day(admin).get_json()["summary"]
+    assert summary["count"] == 1 and summary["total"] == 30000
+
+
+def test_a_replacement_takes_the_old_sales_date(admin):
+    item = make_item(admin, stock=9)
+    yesterday = (shop_today() - timedelta(days=1)).isoformat()
+    old = sell(admin, [{"item_id": item["id"], "qty": 1}], sale_date=yesterday).get_json()["sale"]
+    new = sell(admin, [{"item_id": item["id"], "qty": 2}], sale_date=today(), replaces=old["id"]).get_json()["sale"]
+    assert new["sale_date"] == yesterday
+    assert day(admin, today()).get_json()["summary"]["count"] == 0
+    assert day(admin, yesterday).get_json()["summary"]["count"] == 1
+
+
+def test_only_the_admin_can_replace(admin):
+    item = make_item(admin, stock=5)
+    staff = login("staff1")
+    old = sell(staff, [{"item_id": item["id"], "qty": 1}]).get_json()["sale"]
+    response = sell(staff, [{"item_id": item["id"], "qty": 1}], replaces=old["id"])
+    assert response.status_code == 403 and response.get_json()["error"] == "Only the admin can replace a sale."
+    assert sale_count() == 1 and stock_of(admin, item) == 4
+    assert day(admin).get_json()["sales"][0]["voided"] is False
+
+
+def test_replace_rules_and_nothing_is_saved_on_failure(admin):
+    item = make_item(admin, stock=5)
+    old = sell(admin, [{"item_id": item["id"], "qty": 1}]).get_json()["sale"]
+    line = [{"item_id": item["id"], "qty": 1}]
+    assert sell(admin, line, replaces=9999).status_code == 404
+    for bad in ("1", True, 0, -1, 1.5, [1]):
+        response = sell(admin, line, replaces=bad)
+        assert response.status_code == 400 and response.get_json()["error"] == "Sale to replace is not valid.", bad
+    gone = make_item(admin, name="GONE", stock=5)
+    admin.put(f"/api/items/{gone['id']}", json={"active": False})
+    failed = sell(admin, [{"item_id": gone["id"], "qty": 1}], replaces=old["id"])
+    assert failed.status_code == 400
+    assert sale_count() == 1 and stock_of(admin, item) == 4
+    assert day(admin).get_json()["sales"][0]["voided"] is False
+
+
+def test_an_already_voided_sale_cannot_be_replaced(admin):
+    item = make_item(admin, stock=5)
+    old = sell(admin, [{"item_id": item["id"], "qty": 1}]).get_json()["sale"]
+    void(admin, old["id"])
+    response = sell(admin, [{"item_id": item["id"], "qty": 1}], replaces=old["id"])
+    assert response.status_code == 400 and response.get_json()["error"] == "That sale is already voided."
+    assert sale_count() == 1 and stock_of(admin, item) == 5
+
+
+def test_a_replacement_sale_cannot_be_replaced_twice_by_a_double_tap(admin):
+    item = make_item(admin, stock=5)
+    old = sell(admin, [{"item_id": item["id"], "qty": 1}]).get_json()["sale"]
+    line = [{"item_id": item["id"], "qty": 2}]
+    first = sell(admin, line, replaces=old["id"], client_ref="fix-1")
+    second = sell(admin, line, replaces=old["id"], client_ref="fix-1")
+    assert first.status_code == 201 and second.status_code == 200 and second.get_json()["duplicate"] is True
+    assert sale_count() == 2 and stock_of(admin, item) == 3
+
+
+def test_a_replacement_can_itself_be_voided_later(admin):
+    item = make_item(admin, stock=5)
+    old = sell(admin, [{"item_id": item["id"], "qty": 1}]).get_json()["sale"]
+    new = sell(admin, [{"item_id": item["id"], "qty": 2}], replaces=old["id"]).get_json()["sale"]
+    assert void(admin, new["id"]).status_code == 200
+    # 5, sold 1 -> 4, replaced by 2 -> 3, the replacement voided -> 5. The old sale stays voided.
+    assert stock_of(admin, item) == 5
+    assert day(admin).get_json()["summary"]["count"] == 0
+
+
+def test_the_sell_page_has_the_replace_box_for_the_admin_only(admin):
+    assert 'id="replace-box"' in admin.get("/sell?copy=1").get_data(as_text=True)
+    assert 'id="replace-box"' not in login("staff1").get("/sell?copy=1").get_data(as_text=True)
+    assert 'id="copy-banner"' in login("staff1").get("/sell").get_data(as_text=True)

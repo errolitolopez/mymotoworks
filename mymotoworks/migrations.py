@@ -5,6 +5,7 @@ table. Safe to run on every start."""
 # (table, column, definition). Each is added only when the table lacks it.
 ADDED_COLUMNS = [
     ("sales", "note", "TEXT NOT NULL DEFAULT ''"),
+    ("sales", "replaces_sale_id", "INTEGER REFERENCES sales(id)"),
 ]
 
 

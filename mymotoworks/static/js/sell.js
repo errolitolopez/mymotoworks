@@ -13,6 +13,10 @@ const totalBox = document.getElementById("cart-total");
 const saveButton = document.getElementById("save-sale");
 const dateInput = document.getElementById("sale-date"); // only the admin has it
 const noteInput = document.getElementById("sale-note");
+const copyBanner = document.getElementById("copy-banner");
+const replaceBox = document.getElementById("replace-box"); // only the admin has it
+const replaceCheck = document.getElementById("replace-check");
+const today = document.getElementById("sell-main").dataset.today;
 
 // Each line: {item, qty, price} where price is centavos (the item's own price unless changed).
 let cart = [];
@@ -23,6 +27,9 @@ let cart = [];
 const newRef = () =>
   crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 let saleRef = newRef();
+
+// The copied sale the admin may replace: {id, date}, or null.
+let replaceable = null;
 
 // lineTotal({qty: 2, price: 15000}) -> 30000. A box that is empty or not a number counts as 0,
 // so the total never shows "NaN" while someone is typing.
@@ -214,6 +221,60 @@ searchInput.addEventListener("input", () => {
   searchTimer = setTimeout(searchItems, SEARCH_DELAY_MS);
 });
 
+// clearCopy() -> forgets the copied sale: no banner, no replace box, "/sell" in the address bar
+const clearCopy = () => {
+  replaceable = null;
+  copyBanner.classList.add("d-none");
+  if (replaceBox) {
+    replaceBox.classList.add("d-none");
+    replaceCheck.checked = false;
+    dateInput.disabled = false;
+    dateInput.value = today;
+  }
+  window.history.replaceState(null, "", "/sell");
+};
+
+// Replacing uses the old sale's date, so the day's totals stay right; the date box shows it and is locked.
+if (replaceCheck) {
+  replaceCheck.addEventListener("change", () => {
+    dateInput.disabled = replaceCheck.checked;
+    dateInput.value = replaceCheck.checked ? replaceable.date : today;
+  });
+}
+
+// loadCopy(12) -> fills the cart from sale #12 (items, the price that was charged, the note).
+// Nothing is saved until the person taps Save sale.
+const loadCopy = async (saleId) => {
+  try {
+    const response = await apiFetch(`/api/sales/${saleId}/copy`);
+    if (!response) return;
+    const data = await response.json();
+    if (!response.ok) {
+      showError("load-error", data.error || "Could not copy that sale.");
+      return;
+    }
+    data.lines.forEach((line) => cart.push({ item: line.item, qty: line.qty, price: line.benta }));
+    noteInput.value = data.note;
+    const lines = [`Copied from sale #${data.sale_id}. Nothing is saved until you tap Save sale.`, ...data.skipped];
+    copyBanner.replaceChildren(...lines.map((text) => {
+      const line = document.createElement("div");
+      line.textContent = text;
+      return line;
+    }));
+    copyBanner.classList.remove("d-none");
+    // Only the admin can replace, and only a sale that is not voided yet.
+    if (replaceBox && !data.voided) {
+      replaceable = { id: data.sale_id, date: data.sale_date };
+      document.getElementById("replace-label").textContent =
+        `Replace sale #${data.sale_id}: void it when I save, and use its date (${data.sale_date}).`;
+      replaceBox.classList.remove("d-none");
+    }
+    renderCart();
+  } catch {
+    showError("load-error", "Could not copy that sale.");
+  }
+};
+
 saveButton.addEventListener("click", async () => {
   hideError("sale-error");
   const problem = cartProblem();
@@ -235,6 +296,8 @@ saveButton.addEventListener("click", async () => {
     };
     if (dateInput && dateInput.value) body.sale_date = dateInput.value;
     if (noteInput.value.trim()) body.note = noteInput.value;
+    const replacing = replaceable && replaceCheck && replaceCheck.checked;
+    if (replacing) body.replaces = replaceable.id;
     const response = await apiFetch("/api/sales", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -247,9 +310,11 @@ saveButton.addEventListener("click", async () => {
       return;
     }
     const message = document.getElementById("sale-message");
-    message.textContent = `Sale #${data.sale.id} saved: ₱${pesos(data.sale.total)}.`;
+    message.textContent = `Sale #${data.sale.id} saved: ₱${pesos(data.sale.total)}.` +
+      (replacing ? ` Sale #${replaceable.id} was voided.` : "");
     message.classList.remove("d-none");
     cart = [];
+    clearCopy();
     noteInput.value = "";
     saleRef = newRef(); // the next customer is a new sale
     renderCart();
@@ -266,3 +331,7 @@ saveButton.addEventListener("click", async () => {
 });
 
 updateTotals();
+
+// A sale to copy comes in the address: /sell?copy=12
+const copyId = new URLSearchParams(window.location.search).get("copy");
+if (copyId && /^\d+$/.test(copyId)) loadCopy(copyId);

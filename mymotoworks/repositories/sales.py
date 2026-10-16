@@ -3,11 +3,19 @@
 from mymotoworks.repositories.base import Repository
 
 
+# A sale with its recorder's name and, when a later sale corrected it, that sale's id.
+SALE_COLUMNS = (
+    "sales.*, users.name AS user_name, "
+    "(SELECT fix.id FROM sales AS fix WHERE fix.replaces_sale_id = sales.id) AS replaced_by"
+)
+
+
 class SaleRepository(Repository):
-    def create(self, sale_date, user_id, total, client_ref, note=""):
+    def create(self, sale_date, user_id, total, client_ref, note="", replaces_sale_id=None):
         cursor = self.execute(
-            "INSERT INTO sales (sale_date, user_id, total, client_ref, note) VALUES (?, ?, ?, ?, ?)",
-            (sale_date, user_id, total, client_ref, note),
+            "INSERT INTO sales (sale_date, user_id, total, client_ref, note, replaces_sale_id) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (sale_date, user_id, total, client_ref, note, replaces_sale_id),
         )
         return cursor.lastrowid
 
@@ -21,7 +29,7 @@ class SaleRepository(Repository):
 
     def get(self, sale_id):
         return self.one(
-            "SELECT sales.*, users.name AS user_name FROM sales JOIN users ON users.id = sales.user_id "
+            f"SELECT {SALE_COLUMNS} FROM sales JOIN users ON users.id = sales.user_id "
             "WHERE sales.id = ?", (sale_id,))
 
     def lines(self, sale_id):
@@ -30,13 +38,13 @@ class SaleRepository(Repository):
     def find_by_ref(self, user_id, client_ref):
         """The sale this person already saved with this reference, or None."""
         return self.one(
-            "SELECT sales.*, users.name AS user_name FROM sales JOIN users ON users.id = sales.user_id "
+            f"SELECT {SALE_COLUMNS} FROM sales JOIN users ON users.id = sales.user_id "
             "WHERE sales.user_id = ? AND sales.client_ref = ?", (user_id, client_ref))
 
     def list_for_day(self, sale_date):
         """Every sale of the day, newest first, voided ones too."""
         return self.all(
-            "SELECT sales.*, users.name AS user_name FROM sales JOIN users ON users.id = sales.user_id "
+            f"SELECT {SALE_COLUMNS} FROM sales JOIN users ON users.id = sales.user_id "
             "WHERE sales.sale_date = ? ORDER BY sales.id DESC", (sale_date,))
 
     def day_totals(self, sale_date):

@@ -66,14 +66,32 @@ const saleCard = (sale) => {
     note.textContent = `Voided: ${sale.void_reason}`;
     body.append(note);
   }
+  // Links between a sale and the one that corrected it. Both records stay.
+  [[sale.replaces, "Replaces sale"], [sale.replaced_by, "Replaced by sale"]].forEach(([id, label]) => {
+    if (!id) return;
+    const link = document.createElement("div");
+    link.className = "small text-body-secondary";
+    link.textContent = `${label} #${id}`;
+    body.append(link);
+  });
+
+  const actions = document.createElement("div");
+  actions.className = "d-flex flex-wrap gap-2 mt-2";
+  // Copy starts a new cart from this sale; the sale itself is not changed.
+  const copyLink = document.createElement("a");
+  copyLink.className = "btn btn-outline-secondary bi bi-files";
+  copyLink.href = `/sell?copy=${sale.id}`;
+  copyLink.textContent = " Copy";
+  actions.append(copyLink);
   if (isAdmin && !sale.voided) {
     const voidButton = document.createElement("button");
     voidButton.type = "button";
-    voidButton.className = "btn btn-outline-danger bi bi-slash-circle align-self-start mt-2";
+    voidButton.className = "btn btn-outline-danger bi bi-slash-circle";
     voidButton.textContent = " Void sale";
     voidButton.addEventListener("click", () => openVoid(sale));
-    body.append(voidButton);
+    actions.append(voidButton);
   }
+  body.append(actions);
   card.append(summary, body);
   return card;
 };
