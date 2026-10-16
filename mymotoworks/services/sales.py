@@ -1,8 +1,8 @@
 """Sale use cases: record a sale, list a day, void a sale."""
 
 from mymotoworks import config
-from mymotoworks.domain.sales import clean_date, clean_sale
-from mymotoworks.errors import ForbiddenError, ValidationError
+from mymotoworks.domain.sales import clean_date, clean_sale, clean_void_reason
+from mymotoworks.errors import ForbiddenError, NotFoundError, ValidationError
 from mymotoworks.repositories import ItemRepository, SaleRepository
 from mymotoworks.services.base import Service
 from mymotoworks.services.presenters import sale_json
@@ -62,3 +62,20 @@ class SaleService(Service):
             "sales": [self._json(row) for row in self.sales.list_for_day(day.isoformat())],
             "summary": totals,
         }
+
+    def void(self, sale_id, data):
+        """Cancel a sale: its stock comes back and it leaves the totals. Returns its JSON."""
+        sale = self.sales.get(sale_id)
+        if sale is None:
+            raise NotFoundError("Sale not found.")
+        if sale["voided_at"] is not None:
+            raise ValidationError("This sale is already voided.")
+        reason = clean_void_reason(data.get("reason"))
+        for line in self.sales.lines(sale_id):
+            # `tracked` says whether this line took stock when it was sold. Using it, not the item's
+            # current setting, puts back exactly what was taken.
+            if line["tracked"]:
+                self.items.change_stock(line["item_id"], line["qty"])
+        self.sales.mark_voided(sale_id, self.user["id"], reason)
+        self.commit()
+        return {"sale": self._json(self.sales.get(sale_id))}

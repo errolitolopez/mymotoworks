@@ -56,9 +56,64 @@ const saleCard = (sale) => {
     note.textContent = `Voided: ${sale.void_reason}`;
     body.append(note);
   }
+  if (isAdmin && !sale.voided) {
+    const voidButton = document.createElement("button");
+    voidButton.type = "button";
+    voidButton.className = "btn btn-outline-danger bi bi-slash-circle align-self-start mt-2";
+    voidButton.textContent = " Void sale";
+    voidButton.addEventListener("click", () => openVoid(sale));
+    body.append(voidButton);
+  }
   card.append(summary, body);
   return card;
 };
+
+let voidingId = null;
+
+// openVoid(sale) -> opens the reason form for that sale
+const openVoid = (sale) => {
+  voidingId = sale.id;
+  document.getElementById("void-summary").textContent =
+    `Sale #${sale.id}, ₱${pesos(sale.total)}, ${sale.recorded_at}.`;
+  document.getElementById("void-reason").value = "";
+  hideError("void-error");
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("void-modal")).show();
+};
+
+if (isAdmin) {
+  const voidForm = document.getElementById("void-form");
+  const confirmButton = document.getElementById("void-button");
+  voidForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    hideError("void-error");
+    const reason = document.getElementById("void-reason").value.trim();
+    if (!reason) {
+      showError("void-error", "Write why the sale is voided.");
+      return;
+    }
+    const stopLoading = startLoading(confirmButton);
+    if (!stopLoading) return;
+    try {
+      const response = await apiFetch(`/api/sales/${voidingId}/void`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      if (!response) return;
+      const data = await response.json();
+      if (!response.ok) {
+        showError("void-error", data.error || "Could not void the sale.");
+        return;
+      }
+      bootstrap.Modal.getOrCreateInstance(document.getElementById("void-modal")).hide();
+      loadDay();
+    } catch {
+      showError("void-error", "Cannot reach the server. Check your connection.");
+    } finally {
+      stopLoading();
+    }
+  });
+}
 
 const loadDay = async () => {
   try {

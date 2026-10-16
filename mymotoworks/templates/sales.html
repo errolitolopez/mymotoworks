@@ -30,6 +30,8 @@
   <div id="sale-list" class="d-flex flex-column gap-2"></div>
   <p id="empty-state" class="text-body-secondary text-center py-4 d-none">No sales for this day.</p>
 </main>
+
+{% if user.role == "admin" %}{% include "_void_modal.html" %}{% endif %}
 {% endblock %}
 
 {% block scripts %}

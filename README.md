@@ -30,7 +30,7 @@ mymotoworks/
   schema.sql            the tables
   domain/               rules with no Flask or SQL (accounts, items, money, text helpers)
   repositories/         all SQL, one class per kind of data; they never commit
-  services/             use cases (auth, accounts, items, item import); they check roles and commit
+  services/             use cases (auth, accounts, items, item import, sales); they check roles and commit
   seed.py               flask --app app seed: about 140 sample items (only when there are none)
   imports.py            reading the old spreadsheet, and the import-items command
   web/                  Flask blueprints (pages + JSON API)
@@ -42,6 +42,19 @@ Each layer only uses the ones below it: web → services → repositories / doma
 A route reads the request, calls a service, and returns JSON; a service raises
 `ValidationError("...")` (or `NotFoundError`, ...) and the error becomes `{"error": "..."}`
 with the right status, with nothing saved. 
+
+## Selling
+
+- **Sell** (staff land here after login): search an item, tap it into the cart, change the quantity
+  or the price of a line, save. Stock goes down for items whose stock is counted. A sale may take
+  stock below 0 (the cart warns); wrong counts are fixed with stock adjustments later.
+- Each cart has its own reference, so a double tap or a retry saves the sale only once. A bad line
+  saves nothing and changes no stock.
+- Staff record only today's sales; the admin can also pick a past day, never a future one.
+- **Sales**: the day's sales, newest first, each opening to show its items, with the day's count and
+  total. Staff see today only and no cost or profit. The admin picks any day and sees tubo.
+- The admin can **void** a sale with a reason: its stock comes back (exactly what it took) and it
+  leaves the totals, but it stays in the list crossed out. Sales are never deleted.
 
 ## Loading the old spreadsheet
 

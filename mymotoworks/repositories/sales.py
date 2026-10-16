@@ -49,3 +49,8 @@ class SaleRepository(Repository):
             "FROM sale_lines JOIN sales ON sales.id = sale_lines.sale_id "
             "WHERE sales.sale_date = ? AND sales.voided_at IS NULL", (sale_date,))
         return {"count": row["count"], "total": row["total"], "tubo": tubo}
+
+    def mark_voided(self, sale_id, user_id, reason):
+        self.execute(
+            "UPDATE sales SET voided_at = CURRENT_TIMESTAMP, voided_by = ?, void_reason = ? WHERE id = ?",
+            (user_id, reason, sale_id))

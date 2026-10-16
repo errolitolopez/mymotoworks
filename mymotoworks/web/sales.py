@@ -5,7 +5,9 @@ from flask import Blueprint, jsonify, render_template, request
 from mymotoworks import config
 from mymotoworks.database import get_db
 from mymotoworks.services import SaleService
-from mymotoworks.web.security import current_user, json_body, login_required_api, login_required_page
+from mymotoworks.web.security import (
+    current_user, json_body, login_required_api, login_required_page, role_required_api,
+)
 
 bp = Blueprint("sales", __name__)
 
@@ -40,3 +42,10 @@ def history_page():
 def api_list():
     """?date=YYYY-MM-DD (today when missing). Staff may only ask for today."""
     return jsonify(service().list_day(request.args.get("date")))
+
+
+@bp.post("/api/sales/<int:sale_id>/void")
+@role_required_api("admin")
+def api_void(sale_id):
+    """Body: {reason}. Admin only."""
+    return jsonify(service().void(sale_id, json_body()))

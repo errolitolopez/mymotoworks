@@ -63,3 +63,15 @@ def clean_sale(data, today, is_admin):
                                    or len(client_ref) > MAX_REF_LENGTH):
         raise ValidationError("That sale reference is not valid.")
     return {"sale_date": day.isoformat(), "client_ref": client_ref, "lines": cleaned}
+
+MAX_REASON_LENGTH = 200
+
+
+def clean_void_reason(value):
+    """The reason for voiding a sale, trimmed. Raises ValidationError when empty or too long."""
+    reason = " ".join(value.split()) if isinstance(value, str) else ""
+    if not reason:
+        raise ValidationError("Write why the sale is voided.")
+    if len(reason) > MAX_REASON_LENGTH:
+        raise ValidationError(f"The reason can be at most {MAX_REASON_LENGTH} characters.")
+    return reason

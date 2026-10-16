@@ -287,3 +287,89 @@ def test_sales_page_and_tabs(admin, client):
     assert 'id="day-date"' not in login("staff1").get("/sales").get_data(as_text=True)
     assert client.get("/sales").status_code == 302
     assert client.get("/api/sales").status_code == 401
+
+
+def void(client, sale_id, reason="Wrong item"):
+    return client.post(f"/api/sales/{sale_id}/void", json={"reason": reason})
+
+
+def test_void_puts_the_stock_back_and_leaves_the_totals(admin):
+    item = make_item(admin, stock=5)
+    sale = sell(login("staff1"), [{"item_id": item["id"], "qty": 3}]).get_json()["sale"]
+    assert stock_of(admin, item) == 2
+    response = void(admin, sale["id"], "  Customer changed mind ")
+    assert response.status_code == 200
+    voided = response.get_json()["sale"]
+    assert voided["voided"] is True and voided["void_reason"] == "Customer changed mind"
+    assert stock_of(admin, item) == 5
+    data = day(admin).get_json()
+    assert data["summary"] == {"count": 0, "total": 0, "tubo": 0}
+    assert data["sales"][0]["voided"] is True  # still listed, struck through on the page
+    assert db_query("SELECT voided_by FROM sales")[0]["voided_by"] is not None
+
+
+def test_staff_cannot_void(admin):
+    item = make_item(admin, stock=5)
+    staff = login("staff1")
+    sale = sell(staff, [{"item_id": item["id"], "qty": 1}]).get_json()["sale"]
+    assert void(staff, sale["id"]).status_code == 403
+    assert stock_of(admin, item) == 4
+
+
+def test_voiding_twice_puts_stock_back_only_once(admin):
+    item = make_item(admin, stock=5)
+    sale = sell(admin, [{"item_id": item["id"], "qty": 2}]).get_json()["sale"]
+    assert void(admin, sale["id"]).status_code == 200
+    again = void(admin, sale["id"])
+    assert again.status_code == 400 and again.get_json()["error"] == "This sale is already voided."
+    assert stock_of(admin, item) == 5
+
+
+def test_void_restores_exactly_what_the_sale_took(admin):
+    counted = make_item(admin, stock=5)
+    loose = make_item(admin, name="LINIS", track_stock=False)
+    sale = sell(admin, [{"item_id": counted["id"], "qty": 2}, {"item_id": loose["id"], "qty": 3}]).get_json()["sale"]
+    # The counted item stops counting stock after the sale; the void must still put its 2 back.
+    admin.put(f"/api/items/{counted['id']}", json={"track_stock": False})
+    admin.put(f"/api/items/{loose['id']}", json={"track_stock": True})
+    void(admin, sale["id"])
+    assert stock_of(admin, counted) == 5  # 5 - 2 + 2
+    assert stock_of(admin, loose) == 0    # the loose item never lost stock, so none comes back
+
+
+def test_void_of_a_sale_with_a_deactivated_item_still_works(admin):
+    item = make_item(admin, stock=5)
+    sale = sell(admin, [{"item_id": item["id"], "qty": 2}]).get_json()["sale"]
+    admin.put(f"/api/items/{item['id']}", json={"active": False})
+    assert void(admin, sale["id"]).status_code == 200
+    assert stock_of(admin, item) == 5
+
+
+def test_void_needs_a_reason(admin):
+    item = make_item(admin)
+    sale = sell(admin, [{"item_id": item["id"], "qty": 1}]).get_json()["sale"]
+    for bad in ("", "   ", None, 5, "x" * 201):
+        response = admin.post(f"/api/sales/{sale['id']}/void", json={"reason": bad})
+        assert response.status_code == 400, bad
+    assert admin.post(f"/api/sales/{sale['id']}/void").status_code == 400
+    assert day(admin).get_json()["summary"]["count"] == 1
+
+
+def test_void_of_an_unknown_sale_is_not_found(admin):
+    assert void(admin, 9999).status_code == 404
+
+
+def test_a_voided_sale_with_the_same_cart_reference_is_not_saved_again(admin):
+    item = make_item(admin, stock=5)
+    body = [{"item_id": item["id"], "qty": 1}]
+    first = sell(admin, body, client_ref="cart-1").get_json()["sale"]
+    void(admin, first["id"])
+    again = sell(admin, body, client_ref="cart-1")
+    assert again.status_code == 200 and again.get_json()["duplicate"] is True
+    assert again.get_json()["sale"]["voided"] is True
+    assert stock_of(admin, item) == 5
+
+
+def test_void_form_is_only_on_the_admin_sales_page(admin):
+    assert 'id="void-modal"' in admin.get("/sales").get_data(as_text=True)
+    assert 'id="void-modal"' not in login("staff1").get("/sales").get_data(as_text=True)
