@@ -28,9 +28,10 @@ mymotoworks/
   errors.py             ValidationError / NotFoundError / ... -> JSON {"error": ...}
   database.py           connection per request, init-db, default admin
   schema.sql            the tables
-  domain/               rules with no Flask or SQL (account rules, text helpers)
+  domain/               rules with no Flask or SQL (accounts, items, money, text helpers)
   repositories/         all SQL, one class per kind of data; they never commit
-  services/             use cases (auth, accounts); they check roles and commit
+  services/             use cases (auth, accounts, items); they check roles and commit
+  seed.py               flask --app app seed: about 140 sample items (only when there are none)
   web/                  Flask blueprints (pages + JSON API)
   templates/, static/   base.html, home.html, glass.css, theme.js
 tests/                  pytest suite
@@ -45,7 +46,10 @@ with the right status, with nothing saved.
 
 - **admin**: the owner. Everything, including the Users page. The default account is `admin` / `admin`,
   created on the first start; its password must be changed at the first login.
-- **staff**: records sales and cash-outs and views items. Never sees cost or profit.
+- **staff**: records sales and cash-outs and views items. Never sees cost (puhunan) or profit (tubo):
+  the server leaves those fields out of every answer for staff.
+
+Only the admin adds, edits and deactivates items. Money is stored as whole centavos.
 
 There is no sign-up: the admin creates all accounts and gives each person a temporary password,
 shown once. Five wrong passwords lock that username on that device for five minutes.
