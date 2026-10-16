@@ -30,8 +30,9 @@ mymotoworks/
   schema.sql            the tables
   domain/               rules with no Flask or SQL (accounts, items, money, text helpers)
   repositories/         all SQL, one class per kind of data; they never commit
-  services/             use cases (auth, accounts, items); they check roles and commit
+  services/             use cases (auth, accounts, items, item import); they check roles and commit
   seed.py               flask --app app seed: about 140 sample items (only when there are none)
+  imports.py            reading the old spreadsheet, and the import-items command
   web/                  Flask blueprints (pages + JSON API)
   templates/, static/   base.html, home.html, glass.css, theme.js
 tests/                  pytest suite
@@ -41,6 +42,22 @@ Each layer only uses the ones below it: web → services → repositories / doma
 A route reads the request, calls a service, and returns JSON; a service raises
 `ValidationError("...")` (or `NotFoundError`, ...) and the error becomes `{"error": "..."}`
 with the right status, with nothing saved. 
+
+## Loading the old spreadsheet
+
+One time, into a new database with no items:
+
+    .venv/bin/flask --app app import-items "path/to/JARYLS MOTOWORKS.xlsx" --dry-run     # preview only
+    .venv/bin/flask --app app import-items "path/to/JARYLS MOTOWORKS.xlsx" -v --dry-run  # list every item
+    .venv/bin/flask --app app import-items "path/to/JARYLS MOTOWORKS.xlsx"               # asks, then imports
+
+It reads the `STOCK INVENTORY` sheet: item name, model, part no., puhunan, benta and the
+`REMAINING STOCK` column (the sheet's count after sales). Re-order is set to 0 for every item
+(the sheet's RE-ORDER column is restocked quantity, so it is not used). Rows with a problem
+(no price, no name) are skipped and listed with their row number: add those by hand on the Items
+page. A missing puhunan counts as 0. If the shop already has items the import is refused.
+Past sales are not imported, and October sales are not in the sheet, so recount the shelves
+after loading.
 
 ## Roles
 

@@ -94,13 +94,25 @@ def describe_plan(plan, verbose=False):
 @click.argument("path", type=click.Path())
 @click.option("--dry-run", is_flag=True, help="Only show what would be imported.")
 @click.option("-v", "--verbose", is_flag=True, help="Also list every item that would be imported.")
+@click.option("--yes", is_flag=True, help="Do not ask before importing.")
 @with_appcontext
-def import_items_command(path, dry_run, verbose):
+def import_items_command(path, dry_run, verbose, yes):
     """Load the items and current stock from the old spreadsheet (PATH, an .xlsx file)."""
+    service = ItemImportService(get_db())
     try:
-        plan = ItemImportService(get_db()).plan(read_inventory_rows(path))
+        plan = service.plan(read_inventory_rows(path))
     except ValidationError as error:
         raise click.ClickException(error.message) from None
     click.echo(describe_plan(plan, verbose))
-    if not dry_run:
-        raise click.ClickException("Importing is not built yet. Add --dry-run to see the preview.")
+    if dry_run:
+        return
+    try:
+        if not plan.items:
+            raise ValidationError("There is nothing to import.")
+        if not yes and not click.confirm(f"Import {len(plan.items)} items?"):
+            click.echo("Nothing imported.")
+            return
+        added = service.run(plan)
+    except ValidationError as error:
+        raise click.ClickException(error.message) from None
+    click.echo(f"Imported {added} items.")

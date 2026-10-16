@@ -122,7 +122,82 @@ def test_dry_run_on_a_shop_with_items_says_the_real_import_would_be_refused(app,
     assert "already has 1 item" in result.output and "would be refused" in result.output
 
 
-def test_without_dry_run_nothing_is_imported_yet(app, tmp_path, admin):
-    result = run(app, make_workbook(tmp_path / "shop.xlsx", GOOD))
-    assert result.exit_code != 0 and "--dry-run" in result.output
+def items_of(admin):
+    return admin.get("/api/items?per_page=100").get_json()["items"]
+
+
+def test_import_adds_the_good_rows_exactly(app, tmp_path, admin):
+    rows = GOOD + [("BAJAJ GENUINE VALVE SEAL", "CT100", 39103519, 81, 250, 10),
+                   ("NO PRICE", None, None, 5, None, 1)]
+    result = run(app, make_workbook(tmp_path / "shop.xlsx", rows), "--yes")
+    assert result.exit_code == 0, result.output
+    assert "Imported 3 items." in result.output
+    by_name = {item["name"]: item for item in items_of(admin)}
+    assert set(by_name) == {"AIR FILTER SUNTAL", "ARMAK TAPE 5 YARDS", "BAJAJ GENUINE VALVE SEAL"}
+    air = by_name["AIR FILTER SUNTAL"]
+    assert air["puhunan"] == 10350 and air["benta"] == 15000 and air["stock"] == 3
+    assert air["model"] == "MIOi125 M3" and air["part_no"] == "YA040A"
+    assert air["reorder_level"] == 0 and air["track_stock"] is True and air["active"] is True
+    tape = by_name["ARMAK TAPE 5 YARDS"]
+    assert tape["model"] == "" and tape["part_no"] == "" and tape["stock"] == 9
+    assert by_name["BAJAJ GENUINE VALVE SEAL"]["part_no"] == "39103519"
+
+
+def test_the_reorder_column_does_not_become_stock_or_reorder(app, tmp_path, admin):
+    run(app, make_workbook(tmp_path / "shop.xlsx", GOOD), "--yes")
+    for item in items_of(admin):
+        assert item["reorder_level"] == 0 and item["stock"] in (3, 9)  # not 7 (RE-ORDER) or 99 (STOCK)
+
+
+def test_staff_see_imported_items_without_cost(app, tmp_path):
+    run(app, make_workbook(tmp_path / "shop.xlsx", GOOD), "--yes")
+    text = login("staff1").get("/api/items").get_data(as_text=True)
+    assert "AIR FILTER SUNTAL" in text and "puhunan" not in text
+
+
+def test_the_confirmation_question_can_stop_the_import(app, tmp_path, admin):
+    path = make_workbook(tmp_path / "shop.xlsx", GOOD)
+    no = app.test_cli_runner().invoke(args=["import-items", path], input="n\n")
+    assert "Import 2 items?" in no.output and "Nothing imported." in no.output
+    assert admin.get("/api/items").get_json()["total"] == 0
+    yes = app.test_cli_runner().invoke(args=["import-items", path], input="y\n")
+    assert "Imported 2 items." in yes.output
+    assert admin.get("/api/items").get_json()["total"] == 2
+
+
+def test_a_second_import_is_refused_and_changes_nothing(app, tmp_path, admin):
+    path = make_workbook(tmp_path / "shop.xlsx", GOOD)
+    assert run(app, path, "--yes").exit_code == 0
+    again = run(app, path, "--yes")
+    assert again.exit_code != 0 and "already has" in again.output
+    assert admin.get("/api/items").get_json()["total"] == 2
+
+
+def test_deactivated_items_also_block_the_import(app, tmp_path, admin):
+    item = make_item(admin)
+    admin.put(f"/api/items/{item['id']}", json={"active": False})
+    result = run(app, make_workbook(tmp_path / "shop.xlsx", GOOD), "--yes")
+    assert result.exit_code != 0 and "already has" in result.output
+    assert admin.get("/api/items?inactive=1").get_json()["total"] == 1
+
+
+def test_nothing_to_import_is_a_plain_message(app, tmp_path, admin):
+    result = run(app, make_workbook(tmp_path / "shop.xlsx", [("NO PRICE", None, None, 5, None, 1)]), "--yes")
+    assert result.exit_code != 0 and "nothing to import" in result.output.lower()
+
+
+def test_a_failure_while_saving_leaves_the_database_unchanged(app, tmp_path, admin, monkeypatch):
+    from mymotoworks.repositories.items import ItemRepository
+    real_create = ItemRepository.create
+    calls = []
+
+    def fail_on_second(self, fields):
+        calls.append(fields["name"])
+        if len(calls) == 2:
+            raise RuntimeError("disk full")
+        return real_create(self, fields)
+
+    monkeypatch.setattr(ItemRepository, "create", fail_on_second)
+    result = run(app, make_workbook(tmp_path / "shop.xlsx", GOOD), "--yes")
+    assert result.exit_code != 0
     assert admin.get("/api/items").get_json()["total"] == 0
