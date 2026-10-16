@@ -65,6 +65,13 @@ def reset_database():
 
 
 @pytest.fixture(autouse=True)
+def fresh_login_throttle():
+    """Forget wrong-password counts from earlier tests."""
+    flask_app.extensions["login_throttle"].reset()
+    yield
+
+
+@pytest.fixture(autouse=True)
 def fresh_database():
     reset_database()
     yield

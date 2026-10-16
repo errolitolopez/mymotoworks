@@ -11,6 +11,7 @@ from flask import Flask
 
 from mymotoworks import config, database
 from mymotoworks.errors import register_error_handlers
+from mymotoworks.services import LoginThrottle
 from mymotoworks.web import BLUEPRINTS
 
 
@@ -20,6 +21,7 @@ def create_app(test_config=None):
 
     database.init_app(app)
     register_error_handlers(app)
+    app.extensions["login_throttle"] = LoginThrottle()
     for blueprint in BLUEPRINTS:
         app.register_blueprint(blueprint)
 

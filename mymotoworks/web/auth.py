@@ -1,6 +1,6 @@
 """Login, logout, change password."""
 
-from flask import Blueprint, jsonify, redirect, render_template, session, url_for
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
 
 from mymotoworks.database import get_db
 from mymotoworks.services import AuthService
@@ -24,7 +24,8 @@ def login_page():
 @bp.post("/api/login")
 def api_login():
     data = json_body()
-    user = AuthService(get_db()).login(data.get("username"), data.get("password"))
+    user = AuthService(get_db()).login(data.get("username"), data.get("password"), request.remote_addr,
+                                       current_app.extensions["login_throttle"])
     session.clear()  # a new login never reuses an old session
     session["user_id"] = user["id"]
     return jsonify(ok=True, must_change_password=bool(user["must_change_password"]))

@@ -135,3 +135,45 @@ def test_password_spaces_are_kept_as_typed(client):
 
 def test_change_password_needs_login(client):
     assert change(client, "a", "bbbbbb").status_code == 401
+
+
+def wrong_tries(client, username, count, ip="10.0.0.1"):
+    for _ in range(count):
+        response = client.post("/api/login", json={"username": username, "password": "nope"},
+                               environ_overrides={"REMOTE_ADDR": ip})
+        assert response.status_code == 401
+
+
+def login_from(client, username, password, ip="10.0.0.1"):
+    return client.post("/api/login", json={"username": username, "password": password},
+                       environ_overrides={"REMOTE_ADDR": ip})
+
+
+def test_five_wrong_tries_lock_the_username_even_for_the_right_password(client):
+    wrong_tries(client, "staff1", 5)
+    response = login_from(client, "staff1", PASSWORD)
+    assert response.status_code == 429
+    assert response.get_json()["error"] == "Too many wrong tries. Try again in 5 min."
+
+
+def test_four_wrong_tries_do_not_lock(client):
+    wrong_tries(client, "staff1", 4)
+    assert login_from(client, "staff1", PASSWORD).status_code == 200
+
+
+def test_a_right_password_resets_the_count(client):
+    wrong_tries(client, "staff1", 4)
+    assert login_from(client, "staff1", PASSWORD).status_code == 200
+    wrong_tries(client, "staff1", 4)
+    assert login_from(client, "staff1", PASSWORD).status_code == 200
+
+
+def test_lock_is_for_that_username_and_that_device_only(client):
+    wrong_tries(client, "staff1", 5)
+    assert login_from(client, "admin", "admin").status_code == 200
+    assert login_from(client, "staff1", PASSWORD, ip="10.0.0.2").status_code == 200
+
+
+def test_username_capitals_do_not_get_around_the_lock(client):
+    wrong_tries(client, "staff1", 5)
+    assert login_from(client, "STAFF1", PASSWORD).status_code == 429
