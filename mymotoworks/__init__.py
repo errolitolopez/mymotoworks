@@ -9,7 +9,7 @@ Layers (each only uses the ones below it):
 
 from flask import Flask
 
-from mymotoworks import config
+from mymotoworks import config, database
 from mymotoworks.web import BLUEPRINTS
 
 
@@ -17,6 +17,7 @@ def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     config.configure(app, test_config)
 
+    database.init_app(app)
     for blueprint in BLUEPRINTS:
         app.register_blueprint(blueprint)
 
