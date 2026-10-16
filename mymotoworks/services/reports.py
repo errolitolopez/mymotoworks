@@ -44,3 +44,36 @@ class ReportService(Service):
         year = parse_year(year_text, config.shop_today().year)
         rows = self.reports.sales_by_month(f"{year:04d}-01-01", f"{year:04d}-12-31")
         return {"year": year, "months": [{"month": row["month"], **_money(row)} for row in rows]}
+
+    STOCK_LIST_LIMIT = 200
+    TOP_CAPITAL_LIMIT = 10
+    EXPORT_LIMIT = 5000
+
+    @staticmethod
+    def _stock_item(row):
+        return {"id": row["id"], "name": row["name"], "model": row["model"], "part_no": row["part_no"],
+                "stock": row["stock"], "reorder_level": row["reorder_level"], "puhunan": row["puhunan"],
+                "benta": row["benta"], "capital": row["capital"]}
+
+    def stock(self):
+        """The value of the stock on the shelves, the items that are low or below zero, and where the
+        most money sits. Only active items that count stock; a stock below 0 counts as 0 in the values."""
+        totals = self.reports.stock_totals()
+        low = self.reports.stock_items("stock <= reorder_level", "stock, name COLLATE NOCASE", self.STOCK_LIST_LIMIT)
+        below_zero = self.reports.stock_items("stock < 0", "stock, name COLLATE NOCASE", self.STOCK_LIST_LIMIT)
+        top = self.reports.stock_items("stock > 0", "capital DESC, name COLLATE NOCASE", self.TOP_CAPITAL_LIMIT)
+        return {
+            "totals": {
+                "items": totals["items"], "pieces": totals["pieces"], "capital": totals["capital"],
+                "revenue": totals["revenue"], "tubo": totals["revenue"] - totals["capital"],
+                "out_of_stock": totals["out_of_stock"], "low_stock": totals["low"], "below_zero": totals["below_zero"],
+            },
+            "low_stock": [self._stock_item(row) for row in low],
+            "below_zero": [self._stock_item(row) for row in below_zero],
+            "top_capital": [self._stock_item(row) for row in top],
+        }
+
+    def stock_items(self):
+        """Every active item that counts stock, by name, for the Excel file."""
+        rows = self.reports.stock_items("1 = 1", "name COLLATE NOCASE, model COLLATE NOCASE", self.EXPORT_LIMIT)
+        return [self._stock_item(row) for row in rows]

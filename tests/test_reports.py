@@ -165,3 +165,74 @@ def test_the_reports_page_has_its_parts(admin):
     for element in ('id="tab-sales"', 'id="tab-stock"', 'id="month-label"', 'id="prev-month"', 'id="next-month"',
                     'id="day-list"', 'id="best-list"', 'id="year-list"'):
         assert element in html, element
+
+
+def stock_report(client):
+    return client.get("/api/reports/stock")
+
+
+def test_stock_values(admin):
+    make_item(admin, name="A", stock=3)                                              # puhunan 10350, benta 15000
+    make_item(admin, name="B", puhunan=5000, benta=9000, stock=10)
+    data = stock_report(admin).get_json()
+    assert data["totals"]["items"] == 2 and data["totals"]["pieces"] == 13
+    assert data["totals"]["capital"] == 3 * 10350 + 10 * 5000
+    assert data["totals"]["revenue"] == 3 * 15000 + 10 * 9000
+    assert data["totals"]["tubo"] == data["totals"]["revenue"] - data["totals"]["capital"]
+
+
+def test_an_empty_shop_has_zero_values(admin):
+    data = stock_report(admin).get_json()
+    assert data["totals"] == {"items": 0, "pieces": 0, "capital": 0, "revenue": 0, "tubo": 0, "out_of_stock": 0,
+                              "low_stock": 0, "below_zero": 0}
+    assert data["low_stock"] == [] and data["below_zero"] == [] and data["top_capital"] == []
+
+
+def test_a_negative_stock_counts_as_zero_in_the_values_and_is_listed(admin):
+    ok = make_item(admin, name="OK", stock=2)
+    sold_too_many = make_item(admin, name="TOO MANY", stock=0)
+    db_execute("UPDATE items SET stock = -3 WHERE id = ?", (sold_too_many["id"],))
+    data = stock_report(admin).get_json()
+    assert data["totals"]["capital"] == 2 * 10350 and data["totals"]["pieces"] == 2
+    assert data["totals"]["below_zero"] == 1 and data["totals"]["out_of_stock"] == 1
+    assert [row["name"] for row in data["below_zero"]] == ["TOO MANY"] and data["below_zero"][0]["stock"] == -3
+    assert ok["id"] not in [row["id"] for row in data["below_zero"]]
+
+
+def test_uncounted_and_deactivated_items_are_not_in_the_values(admin):
+    make_item(admin, name="COUNTED", stock=2)
+    make_item(admin, name="LINIS", track_stock=False)
+    gone = make_item(admin, name="GONE", stock=50)
+    admin.put(f"/api/items/{gone['id']}", json={"active": False})
+    data = stock_report(admin).get_json()
+    assert data["totals"]["items"] == 1 and data["totals"]["capital"] == 2 * 10350
+    assert [row["name"] for row in data["top_capital"]] == ["COUNTED"]
+
+
+def test_the_low_stock_list(admin):
+    make_item(admin, name="FINE", stock=9, reorder_level=2)
+    make_item(admin, name="EDGE", stock=2, reorder_level=2)
+    make_item(admin, name="OUT", stock=0, reorder_level=0)
+    make_item(admin, name="LINIS", track_stock=False)
+    data = stock_report(admin).get_json()
+    assert [row["name"] for row in data["low_stock"]] == ["OUT", "EDGE"]       # lowest stock first
+    assert data["totals"]["low_stock"] == 2 and data["totals"]["out_of_stock"] == 1
+
+
+def test_top_capital_is_ordered_and_limited_to_ten(admin):
+    for number in range(1, 13):
+        make_item(admin, name=f"ITEM {number:02d}", stock=number)             # capital grows with the number
+    top = stock_report(admin).get_json()["top_capital"]
+    assert len(top) == 10 and top[0]["name"] == "ITEM 12" and top[0]["capital"] == 12 * 10350
+    assert top[-1]["name"] == "ITEM 03"
+
+
+def test_the_stock_report_is_for_the_admin_only(admin, client):
+    assert stock_report(login("staff1")).status_code == 403
+    assert stock_report(client).status_code == 401
+
+
+def test_the_stock_tab_has_its_parts(admin):
+    html = admin.get("/reports").get_data(as_text=True)
+    for element in ('id="stock-cards"', 'id="low-list"', 'id="zero-list"', 'id="capital-list"'):
+        assert element in html, element

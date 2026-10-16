@@ -45,7 +45,20 @@
     <div id="year-list" class="list-group mb-3"></div>
   </section>
 
-  <section id="panel-stock" class="d-none" aria-label="Stock report"></section>
+  <section id="panel-stock" class="d-none" aria-label="Stock report">
+    <div id="stock-cards" class="row g-2 mb-3"></div>
+    <p id="stock-note" class="small text-body-secondary mb-3"></p>
+
+    <h2 class="h6">Low stock <span id="low-count" class="text-body-secondary"></span></h2>
+    <div id="low-list" class="list-group mb-3"></div>
+
+    <h2 class="h6">Below zero <span id="zero-count" class="text-body-secondary"></span></h2>
+    <p class="small text-body-secondary">Sold more than the stock said. Count the shelf (Items, Stock, Count stock) to fix it.</p>
+    <div id="zero-list" class="list-group mb-3"></div>
+
+    <h2 class="h6">Where the money is</h2>
+    <div id="capital-list" class="list-group mb-3"></div>
+  </section>
 </main>
 {% endblock %}
 

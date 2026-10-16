@@ -41,3 +41,22 @@ class ReportRepository(Repository):
             "FROM sales JOIN sale_lines ON sale_lines.sale_id = sales.id "
             f"WHERE sales.sale_date BETWEEN ? AND ? AND {COUNTED_SALES} "
             "GROUP BY sale_lines.item_id ORDER BY pieces DESC, name COLLATE NOCASE LIMIT ?", (first, last, limit))
+
+    # Items that count stock and are for sale: the ones the shop holds money in.
+    HELD = "active = 1 AND track_stock = 1"
+    # Capital of one item. A stock below 0 counts as 0: the shelf cannot hold less than nothing.
+    CAPITAL = "puhunan * MAX(stock, 0)"
+
+    def stock_totals(self):
+        return self.one(
+            f"SELECT COUNT(*) AS items, COALESCE(SUM(MAX(stock, 0)), 0) AS pieces, "
+            f"COALESCE(SUM({self.CAPITAL}), 0) AS capital, COALESCE(SUM(benta * MAX(stock, 0)), 0) AS revenue, "
+            "COALESCE(SUM(stock <= 0), 0) AS out_of_stock, COALESCE(SUM(stock <= reorder_level), 0) AS low, "
+            f"COALESCE(SUM(stock < 0), 0) AS below_zero FROM items WHERE {self.HELD}")
+
+    def stock_items(self, condition, order, limit):
+        """Items that count stock, matching an extra condition, in the given order. The condition and the
+        order are fixed text from this module, never from a request."""
+        return self.all(
+            f"SELECT *, {self.CAPITAL} AS capital FROM items WHERE {self.HELD} AND {condition} "
+            f"ORDER BY {order} LIMIT ?", (limit,))

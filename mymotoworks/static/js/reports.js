@@ -121,4 +121,64 @@ const showTab = (name) => {
 tabSales.addEventListener("click", () => showTab("sales"));
 tabStock.addEventListener("click", () => showTab("stock"));
 
+// card("Capital", "₱81,050.00") -> a small card for the stock tab
+const card = (label, value) => {
+  const column = document.createElement("div");
+  column.className = "col-6";
+  const box = document.createElement("div");
+  box.className = "card";
+  const body = document.createElement("div");
+  body.className = "card-body py-2";
+  const small = document.createElement("div");
+  small.className = "small text-body-secondary";
+  small.textContent = label;
+  const big = document.createElement("div");
+  big.className = "fs-6 fw-semibold";
+  big.textContent = value;
+  body.append(small, big);
+  box.append(body);
+  column.append(box);
+  return column;
+};
+
+// stockRow(item, small) -> a row: the item's name and model, its stock, and a small figure on the right
+const stockRow = (item, small) =>
+  row([item.name, item.model].filter(Boolean).join(" · "),
+    `Stock ${item.stock}${item.reorder_level ? ` · re-order at ${item.reorder_level}` : ""}`,
+    `₱${pesos(item.capital)}`, small);
+
+// listOrEmpty(rows, "Nothing here.") -> the rows, or one quiet row when there are none
+const listOrEmpty = (rows, text) => (rows.length === 0 ? [emptyRow(text)] : rows);
+
+const loadStock = async () => {
+  try {
+    const response = await apiFetch("/api/reports/stock");
+    if (!response) return;
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+    hideError("load-error");
+    const totals = data.totals;
+    document.getElementById("stock-cards").replaceChildren(
+      card("Capital in stock", `₱${pesos(totals.capital)}`),
+      card("If all sold (revenue)", `₱${pesos(totals.revenue)}`),
+      card("Tubo if all sold", `₱${pesos(totals.tubo)}`),
+      card("Items / pieces", `${totals.items} / ${totals.pieces}`),
+      card("Low stock", String(totals.low_stock)),
+      card("Out of stock", String(totals.out_of_stock)),
+    );
+    document.getElementById("stock-note").textContent =
+      "Only items that count stock and are for sale. Capital is the cost of the stock on the shelf (puhunan × stock).";
+    document.getElementById("low-count").textContent = `(${totals.low_stock})`;
+    document.getElementById("zero-count").textContent = `(${totals.below_zero})`;
+    document.getElementById("low-list").replaceChildren(...listOrEmpty(
+      data.low_stock.map((item) => stockRow(item, "low")), "Nothing is low."));
+    document.getElementById("zero-list").replaceChildren(...listOrEmpty(
+      data.below_zero.map((item) => stockRow(item, "below zero")), "Nothing is below zero."));
+    document.getElementById("capital-list").replaceChildren(...listOrEmpty(
+      data.top_capital.map((item, index) => stockRow(item, `#${index + 1}`)), "No stock yet."));
+  } catch {
+    showError("load-error", "Could not load the stock report.");
+  }
+};
+
 loadSales("");

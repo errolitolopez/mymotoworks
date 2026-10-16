@@ -37,3 +37,10 @@ def api_sales():
 def api_months():
     """?year=2026 (this year when missing or empty)."""
     return jsonify(service().months(_single("year")))
+
+
+@bp.get("/api/reports/stock")
+@role_required_api("admin")
+def api_stock():
+    """The value of the stock, the low and below-zero items, and where the most money sits."""
+    return jsonify(service().stock())
