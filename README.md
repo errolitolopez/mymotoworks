@@ -46,11 +46,13 @@ with the right status, with nothing saved.
 
 ## Selling
 
-- **Sell** (staff land here after login): the whole item list is already on the page; typing in the
-  filter box narrows it at once (words in any order). Tap an item to add it to the cart (a "×2" mark
-  shows what is already in it), change the quantity or the price of a line, save. On a phone the page
-  has two tabs, Items and Cart; from 768px wide both show side by side. A sale may take stock below 0 (the cart warns); wrong counts are
-  fixed with stock adjustments later.
+- **Sell** (staff land here after login): the whole item list is already on the page, grouped by the
+  first word of the name ("BRAKE (29)", closed at first, so the page stays short; an item that is
+  alone in its group shows as its own row). Every row has − and + to take one off or add one.
+  Typing in the filter box narrows the list at once (words in any order) and opens the groups that
+  match. Then change a quantity or a price in the cart, add a note, and save. A sale may take stock
+  below 0 (the cart warns); wrong counts are fixed with stock adjustments later. On a phone the
+  page has two tabs, Items and Cart; from 768px wide both show side by side.
 - **Approval**: every sale, the admin's too, is **pending** when it is saved. It does not touch the
   stock and is not in the day's total or tubo (the Sales page shows it apart). The admin approves it
   (one by one, or "Approve all" for the day) and only then the stock goes down and the sale counts.

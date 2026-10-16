@@ -177,6 +177,20 @@ const addToCart = (item) => {
   renderCart();
 };
 
+// removeOne(item) -> takes one of the item out of the cart (the line goes when it reaches 0).
+// Prefers the line at the item's own price, so a line whose price was changed is the last to go.
+const removeOne = (item) => {
+  const lines = cart.filter((line) => line.item.id === item.id);
+  const line = lines.find((other) => other.price === item.benta) || lines[0];
+  if (!line) return;
+  if (Number.isInteger(line.qty) && line.qty > 1) {
+    line.qty -= 1;
+  } else {
+    cart = cart.filter((other) => other !== line);
+  }
+  renderCart();
+};
+
 // showTab("cart") -> on a phone, shows the cart instead of the item list ("items" does the reverse).
 // From 768px both are always visible (d-md-block), so the tabs only matter on small screens.
 const showTab = (name) => {
@@ -200,59 +214,115 @@ const matches = (item, words) => {
   return words.every((word) => text.includes(word));
 };
 
-// itemRow(item) -> one tappable row of the list: name, model, price, stock, and a "×2" mark when in the cart
-const itemRow = (item) => {
-  const row = document.createElement("button");
-  row.type = "button";
-  row.className = "list-group-item list-group-item-action d-flex align-items-center gap-2";
+// stepperButton("bi-plus-lg", "Add one X", "btn-primary", handler) -> a − or + button of a row
+const stepperButton = (icon, label, style, onClick) => {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `btn ${style} bi ${icon}`;
+  button.setAttribute("aria-label", label);
+  button.addEventListener("click", onClick);
+  return button;
+};
+
+// itemRow(item, inGroup) -> one row of the list: the name, model and part no., price and stock, and
+// a − 2 + stepper that adds or takes off one at a time
+const itemRow = (item, inGroup) => {
+  const row = document.createElement("div");
+  row.className = `item-row d-flex align-items-center gap-2 px-3 py-2 ${inGroup ? "border-top" : "list-group-item"}`;
+
   const info = document.createElement("div");
-  info.className = "min-w-0 text-start flex-grow-1";
+  info.className = "min-w-0 flex-grow-1";
   const name = document.createElement("div");
   name.className = "fw-semibold text-break";
-  name.textContent = item.name;
+  name.textContent = [item.name, item.model].filter(Boolean).join(" · ");
   info.append(name);
-  const where = [item.model, item.part_no].filter(Boolean).join(" · ");
-  if (where) {
-    const detail = document.createElement("div");
-    detail.className = "small text-body-secondary text-break";
-    detail.textContent = where;
-    info.append(detail);
-  }
-  const numbers = document.createElement("div");
-  numbers.className = "text-end flex-shrink-0";
-  const price = document.createElement("div");
-  price.className = "fw-semibold";
-  price.textContent = `₱${pesos(item.benta)}`;
-  const stock = document.createElement("div");
+  const detail = document.createElement("div");
+  detail.className = "small text-body-secondary text-break";
+  const parts = [item.part_no, `₱${pesos(item.benta)}`].filter(Boolean);
+  detail.textContent = parts.join(" · ");
+  const stock = document.createElement("span");
   // Stock at 0 or less is shown in red: a sale is still allowed, but the person should know.
-  stock.className = item.track_stock && item.stock <= 0 ? "small text-danger" : "small text-body-secondary";
-  stock.textContent = item.track_stock ? `Stock ${item.stock}` : "No stock count";
-  numbers.append(price, stock);
-  const marker = document.createElement("div");
-  marker.className = "flex-shrink-0 text-center";
-  marker.style.minWidth = "2.25rem";
+  stock.className = item.track_stock && item.stock <= 0 ? "text-danger" : "";
+  stock.textContent = item.track_stock ? ` · Stock ${item.stock}` : " · No stock count";
+  detail.append(stock);
+  info.append(detail);
+
   const count = inCart(item);
-  if (count > 0) {
-    const mark = document.createElement("span");
-    mark.className = "badge text-bg-primary";
-    mark.textContent = `×${count}`;
-    marker.append(mark);
-  } else {
-    const plus = document.createElement("span");
-    plus.className = "bi bi-plus-lg text-body-secondary";
-    plus.setAttribute("aria-hidden", "true");
-    marker.append(plus);
-  }
-  row.append(info, numbers, marker);
-  row.addEventListener("click", () => addToCart(item));
+  const stepper = document.createElement("div");
+  stepper.className = "d-flex align-items-center flex-shrink-0 gap-1";
+  const less = stepperButton("bi-dash-lg", `Remove one ${item.name}`, "btn-outline-secondary", () => removeOne(item));
+  less.disabled = count === 0;
+  const qty = document.createElement("span");
+  qty.className = `item-qty fw-semibold text-center ${count > 0 ? "text-primary" : "text-body-secondary"}`;
+  qty.style.minWidth = "1.75rem";
+  qty.textContent = String(count);
+  const more = stepperButton("bi-plus-lg", `Add one ${item.name}`, "btn-primary", () => addToCart(item));
+  stepper.append(less, qty, more);
+
+  row.append(info, stepper);
   return row;
 };
 
-// renderList() -> shows the items that match the filter box (all of them when it is empty)
+// groupKey({name: "BRAKE PAD REAR"}) -> "BRAKE" (the first word of the name). Items sharing it are listed under
+// one line, so a few hundred items make a short page. The list is already sorted by name.
+const groupKey = (item) => item.name.trim().split(/\s+/)[0].toUpperCase();
+
+// The groups the person opened by hand. Kept here because the list is drawn again after every tap.
+const openGroups = new Set();
+
+// groupLine(key, items, forceOpen) -> a closed-at-first line "BRAKE (29)" that opens to show its rows
+const groupLine = (key, items, forceOpen) => {
+  const details = document.createElement("details");
+  details.className = "list-group-item p-0";
+  details.open = forceOpen || openGroups.has(key);
+  const summary = document.createElement("summary");
+  summary.className = "group-summary d-flex align-items-center gap-2 px-3 py-2";
+  const chevron = document.createElement("span");
+  chevron.className = "bi bi-chevron-right group-chevron flex-shrink-0";
+  chevron.setAttribute("aria-hidden", "true");
+  const title = document.createElement("span");
+  title.className = "fw-semibold flex-grow-1";
+  title.textContent = key;
+  const total = document.createElement("span");
+  total.className = "text-body-secondary";
+  total.textContent = `(${items.length})`;
+  summary.append(chevron, title, total);
+  const inGroup = items.reduce((sum, item) => sum + inCart(item), 0);
+  if (inGroup > 0) {
+    const mark = document.createElement("span");
+    mark.className = "badge text-bg-primary";
+    mark.textContent = `×${inGroup}`;
+    summary.append(mark);
+  }
+  // The click runs before the browser opens or closes the group, so the new state is the opposite.
+  summary.addEventListener("click", () => {
+    if (details.open) {
+      openGroups.delete(key);
+    } else {
+      openGroups.add(key);
+    }
+  });
+  details.append(summary, ...items.map((item) => itemRow(item, true)));
+  return details;
+};
+
+// renderList() -> draws the items that match the filter box: a group line per first word (closed at
+// first), or the row itself for an item that is alone in its group. While filtering, groups are open.
 const renderList = () => {
   const words = filterWords();
   const shown = allItems.filter((item) => matches(item, words));
-  itemListBox.replaceChildren(...shown.map(itemRow));
+  const groups = [];
+  shown.forEach((item) => {
+    const key = groupKey(item);
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) {
+      last.items.push(item);
+    } else {
+      groups.push({ key, items: [item] });
+    }
+  });
+  itemListBox.replaceChildren(...groups.map((group) =>
+    group.items.length === 1 ? itemRow(group.items[0], false) : groupLine(group.key, group.items, words.length > 0)));
   itemsEmpty.classList.toggle("d-none", shown.length > 0 || allItems.length === 0);
   return shown;
 };

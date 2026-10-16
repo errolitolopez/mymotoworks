@@ -157,3 +157,18 @@ body {
     height: 100dvh;
   }
 }
+
+/* The item groups on the Sell page: our own chevron turns when a group opens, so the browser's
+   default marker is hidden. */
+.group-summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.group-summary::-webkit-details-marker {
+  display: none;
+}
+
+details[open] > .group-summary .group-chevron {
+  transform: rotate(90deg);
+}
