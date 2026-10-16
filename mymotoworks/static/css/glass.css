@@ -79,8 +79,9 @@ body {
 .tabbar {
   position: fixed;
   inset: auto 0 0 0;
-  /* Above page content, below dropdowns (1000 is for page-level ones) and modals (1055). */
-  z-index: 1030;
+  /* Above page content, but below Bootstrap's dropdown menus (1000) and modals (1055), so a row
+     menu that opens near the bottom of the screen is never hidden behind the bar. */
+  z-index: 900;
   display: flex;
   background-color: var(--glass-solid);
   border-top: 1px solid var(--glass-border);
