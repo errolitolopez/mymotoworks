@@ -25,7 +25,7 @@ def test_logged_in_pages_have_a_bottom_tab_bar(admin):
 
 
 def test_tab_bar_follows_the_role(admin):
-    assert tab_links(page(admin, "/dashboard")) == ["Home", "Sell", "Sales", "Items", "Users", "Reports"]
+    assert tab_links(page(admin, "/dashboard")) == ["Home", "Sell", "Sales", "Items", "Reports"]
     assert tab_links(page(login("staff1"), "/sell")) == ["Sell", "Sales", "Items"]
 
 
@@ -44,7 +44,7 @@ def test_one_user_menu_with_password_theme_and_logout(admin):
     html = page(admin, "/dashboard")
     assert html.count('id="logout-button"') == 1
     menu = html.split('class="dropdown-menu')[1].split("</ul>")[0]
-    assert "Password" in menu and "data-theme-toggle" in menu and "Logout" in menu
+    assert "Password" in menu and "data-theme-toggle" in menu and "Logout" in menu and "Users" in menu
 
 
 def test_big_forms_are_full_screen_on_phones(admin):
@@ -99,3 +99,8 @@ def test_the_items_page_has_a_stock_menu_for_the_admin_only(admin):
     assert 'id="stock-menu"' in html and 'href="/restock"' in html and 'id="adjust-modal"' in html
     staff_html = page(login("staff1"), "/items")
     assert 'id="stock-menu"' not in staff_html and 'id="adjust-modal"' not in staff_html
+
+
+def test_home_has_the_sales_chart_for_admin_only(admin):
+    assert 'id="chart"' in page(admin, "/dashboard")
+    assert 'id="chart"' not in page(login("staff1"), "/dashboard")

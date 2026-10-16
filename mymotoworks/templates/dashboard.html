@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Home · mymotoworks{% endblock %}
+{% block title %}Home · Jaryl's Motoworks{% endblock %}
 
 {% block content %}
 {% include "_navbar.html" %}
@@ -15,6 +15,40 @@
     </div>
   </a>
   {% endif %}
+  {% if user.role == "admin" %}
+  <div class="card">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+        <h2 id="chart-title" class="h5 mb-0 bi bi-bar-chart-line"> Sales per month</h2>
+        <div class="d-flex gap-2">
+        <button id="chart-back" class="btn btn-outline-secondary btn-sm bi bi-arrow-90deg-up d-none" type="button"> Year</button>
+        <div class="btn-group">
+          <button id="year-prev" class="btn btn-outline-secondary btn-sm bi bi-chevron-left" type="button" aria-label="Previous"></button>
+          <span id="year-label" class="btn btn-outline-secondary btn-sm disabled"></span>
+          <button id="year-next" class="btn btn-outline-secondary btn-sm bi bi-chevron-right" type="button" aria-label="Next"></button>
+        </div>
+        </div>
+      </div>
+      <div id="chart-error" class="alert alert-danger d-none"></div>
+      <div id="chart-empty" class="text-body-secondary text-center py-4 d-none">No sales in this period.</div>
+      <!-- The three totals of the period; tapping one shows it in the chart. -->
+      <div class="btn-group w-100 mb-2" role="group" aria-label="Show in the chart">
+        {% for key, label in [("total", "Sales"), ("cost", "Cost"), ("tubo", "Tubo")] %}
+        <input type="radio" class="btn-check" name="chart-metric" id="metric-{{ key }}" value="{{ key }}" autocomplete="off" {{ "checked" if key == "total" }}>
+        <label class="btn btn-outline-primary py-2" for="metric-{{ key }}">
+          <span class="d-block small">{{ label }}</span>
+          <span id="sum-{{ key }}" class="d-block fw-semibold"></span>
+        </label>
+        {% endfor %}
+      </div>
+      <div id="chart-sub" class="small text-body-secondary mb-2"></div>
+      <!-- Chart.js needs a box with a set height to draw into. -->
+      <div class="position-relative" style="height: 16rem;">
+        <canvas id="chart" role="img" aria-label="Bar chart of sales"></canvas>
+      </div>
+    </div>
+  </div>
+  {% endif %}
   {% if backup %}
   <div class="card {{ 'border-warning' if backup.stale else '' }}" {% if backup.stale %}id="backup-warning"{% endif %}>
     <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -28,15 +62,15 @@
     </div>
   </div>
   {% endif %}
-  <div class="card">
-    <div class="card-body">
-      <h1 class="h4">Hello, {{ user.name }}</h1>
-      <p class="mb-0 text-body-secondary">You are logged in as {{ user.role }}. The shop pages come next.</p>
-    </div>
-  </div>
 </main>
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+{% if user.role == "admin" %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
+        integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC"
+        crossorigin="anonymous"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endif %}
 {% endblock %}
