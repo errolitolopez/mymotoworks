@@ -78,3 +78,25 @@ def sale_json(sale, lines, role):
     if admin:
         result["tubo"] = sum(line["tubo"] for line in result_lines)
     return result
+
+
+def restock_json(restock, lines):
+    """A restock with its lines. Only the admin can see restocks, so cost is always included."""
+    return {
+        "id": restock["id"],
+        "restock_date": restock["restock_date"],
+        "recorded_by": restock["user_name"],
+        "recorded_at": shop_time_text(restock["created_at"]),
+        "note": restock["note"],
+        "total": restock["total"],
+        "voided": restock["voided_at"] is not None,
+        "void_reason": restock["void_reason"],
+        "lines": [{
+            "item_id": line["item_id"],
+            "name": line["item_name"],
+            "qty": line["qty"],
+            "puhunan": line["puhunan"],
+            "old_puhunan": line["old_puhunan"],
+            "line_total": line["qty"] * line["puhunan"],
+        } for line in lines],
+    }

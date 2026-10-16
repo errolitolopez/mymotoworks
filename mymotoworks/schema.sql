@@ -74,3 +74,34 @@ CREATE TABLE IF NOT EXISTS sale_lines (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sale_lines_sale ON sale_lines (sale_id);
+
+-- Goods that arrived. Never deleted: a wrong restock is voided, so history stays correct.
+CREATE TABLE IF NOT EXISTS restocks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    restock_date TEXT NOT NULL,              -- YYYY-MM-DD, the shop's day
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    total INTEGER NOT NULL,                  -- centavos
+    note TEXT NOT NULL DEFAULT '',
+    -- Made by the page for each restock, so a double tap or a retry saves only once.
+    client_ref TEXT UNIQUE,
+    voided_at TEXT,
+    voided_by INTEGER REFERENCES users(id),
+    void_reason TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_restocks_date ON restocks (restock_date);
+
+-- The name and both costs are copied when the restock is saved. old_puhunan is what the item cost
+-- before, so the history shows the change and a void can put it back.
+CREATE TABLE IF NOT EXISTS restock_lines (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    restock_id INTEGER NOT NULL REFERENCES restocks(id),
+    item_id INTEGER NOT NULL REFERENCES items(id),
+    item_name TEXT NOT NULL,
+    qty INTEGER NOT NULL CHECK (qty > 0),
+    puhunan INTEGER NOT NULL,                -- the new cost of one piece
+    old_puhunan INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_restock_lines_restock ON restock_lines (restock_id);

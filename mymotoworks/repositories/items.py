@@ -59,3 +59,8 @@ class ItemRepository(Repository):
         must never stop a sale."""
         self.execute("UPDATE items SET stock = stock + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                      (amount, item_id))
+
+    def set_puhunan(self, item_id, puhunan):
+        """Set the item's cost (a restock's new cost, or the old one put back by a void)."""
+        self.execute("UPDATE items SET puhunan = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                     (puhunan, item_id))

@@ -87,3 +87,8 @@ def test_the_sell_list_is_a_flat_list_in_its_own_scroll_box(admin):
     # The list sits inside the box: nothing closes between the box opening and the list opening.
     between = html.split('id="item-scroll"')[1].split('id="item-list"')[0]
     assert "</div>" not in between
+
+
+def test_the_items_page_has_a_restock_button_for_the_admin_only(admin):
+    assert 'href="/restock"' in page(admin, "/items")
+    assert 'href="/restock"' not in page(login("staff1"), "/items")
